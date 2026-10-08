@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="{{JEZYK}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2A2925">
+<title>{{TYTUL}}</title>
+<style>
+  :root { --tlo:#F2F0EA; --panel:#FFFFFF; --tusz:#2A2925; --opis:#6E6A60; --linia:#D9D5CB;
+          --akcent:#2F6B4F; --drewno:#7A5636; --czerwony:#A23B2A; --pomaranczowy:#A3641E; --niebieski:#3E5A78; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: var(--tlo); color: var(--tusz);
+         font: 16px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif;
+         padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  header { background: var(--tusz); color: #F2F0EA; padding: 12px 16px; font-weight: 700; letter-spacing: .03em; }
+  main { padding: 12px 14px 32px; max-width: 640px; margin: 0 auto; }
+  .podglad { position: relative; background: #000; border-radius: 10px; overflow: hidden; aspect-ratio: 4 / 3; display: none; }
+  .podglad video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .celownik { position: absolute; inset: 18% 22%; border: 3px solid rgba(255,255,255,.85); border-radius: 12px;
+              box-shadow: 0 0 0 9999px rgba(0,0,0,.25); pointer-events: none; }
+  .przelacz { position: absolute; top: 10px; right: 10px; padding: 8px 12px; font-size: 14px;
+              background: rgba(42,41,37,.75); color: #fff; border-radius: 20px; }
+  .przelacz[hidden] { display: none; }
+  .nazwa_kamery { position: absolute; top: 12px; left: 12px; color: #fff; font-size: 12px;
+                  text-shadow: 0 1px 2px #000; max-width: 55%; }
+  pre.diagnostyka { white-space: pre-wrap; font-size: 11px; background: var(--panel); padding: 8px;
+                    border-radius: 8px; color: var(--tusz); }
+  .podpowiedz { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; color: #fff;
+                font-size: 14px; text-shadow: 0 1px 2px #000; }
+  .przyciski { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+  button, .przycisk { appearance: none; border: 0; border-radius: 10px; padding: 14px 12px; font-size: 16px;
+           font-weight: 600; background: var(--panel); color: var(--tusz); box-shadow: 0 1px 0 var(--linia);
+           text-align: center; cursor: pointer; display: block; }
+  button.glowny { background: var(--akcent); color: #fff; }
+  button:disabled { opacity: .5; }
+  input[type=file] { display: none; }
+  form.reczny { display: flex; gap: 8px; margin: 4px 0 14px; }
+  form.reczny input { flex: 1; font-size: 16px; padding: 12px; border-radius: 10px; border: 1px solid var(--linia);
+                      text-transform: uppercase; }
+  form.reczny input::placeholder { text-transform: none; }
+  .komunikat { padding: 10px 12px; border-radius: 10px; background: #FFF6E5; color: #6B4A12; margin: 10px 0; font-size: 14px; display: none; }
+  .karta { background: var(--panel); border-radius: 12px; padding: 14px; margin: 12px 0; box-shadow: 0 1px 0 var(--linia); display: none; }
+  .karta .gora { display: flex; gap: 12px; align-items: flex-start; }
+  .karta img { width: 88px; height: auto; border-radius: 8px; flex: none; }
+  .karta .kod { font-weight: 700; color: var(--opis); font-size: 14px; letter-spacing: .03em; }
+  .karta h2 { margin: 2px 0 8px; font-size: 20px; line-height: 1.2; }
+  .karta.lokalizacja h2 { color: var(--drewno); }
+  .karta.nieznany h2 { color: var(--czerwony); font-size: 17px; }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 14px; }
+  dt { color: var(--opis); } dd { margin: 0; }
+  h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--opis); margin: 14px 0 6px; }
+  ul.lista { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  ul.lista li { padding: 7px 0; border-top: 1px solid var(--linia); display: flex; gap: 8px; }
+  ul.lista .k { color: var(--opis); white-space: nowrap; font-variant-numeric: tabular-nums; margin-right: 8px; }
+  ul.lista .s { margin-left: auto; color: var(--opis); white-space: nowrap; }
+  .s.uszkodzony { color: var(--czerwony); } .s.w_naprawie { color: var(--pomaranczowy); } .s.zapasowy { color: var(--niebieski); }
+  .historia li { cursor: pointer; }
+  details { margin-top: 18px; font-size: 14px; color: var(--opis); }
+  details summary { cursor: pointer; font-weight: 600; color: var(--tusz); }
+  details ol { padding-left: 20px; }
+  details a { color: var(--akcent); font-weight: 600; }
+  .zdjecia { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--linia); }
+  .zdjecia .przycisk { background: var(--tlo); }
+  .zdjecia .opcja { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 15px; }
+  .zdjecia .opcja input { width: 22px; height: 22px; margin: 0 8px 0 0; }
+  .zdjecia .liczba { color: var(--opis); font-size: 13px; margin-top: 8px; }
+  .postep { height: 6px; background: var(--linia); border-radius: 3px; overflow: hidden; margin-top: 10px; display: none; }
+  .postep div { height: 100%; width: 0; background: var(--akcent); transition: width .2s; }
+  .blysk { animation: blysk .5s; }
+  @keyframes blysk { from { box-shadow: 0 0 0 4px var(--akcent); } to { box-shadow: 0 1px 0 var(--linia); } }
+</style>
+</head>
+<body>
+<header id="naglowek"></header>
+<main>
+  <div class="podglad" id="podglad">
+    <video id="wideo" playsinline muted autoplay></video>
+    <div class="celownik"></div>
+    <div class="podpowiedz" id="celuj"></div>
+    <button type="button" class="przelacz" id="przelacz" hidden></button>
+    <div class="nazwa_kamery" id="nazwa_kamery"></div>
+  </div>
+  <div class="przyciski">
+    <button class="glowny" id="aparat" type="button"></button>
+    <label class="przycisk" for="zdjecie" id="przycisk_zdjecia"></label>
+  </div>
+  <input type="file" id="zdjecie" accept="image/*" capture="environment">
+  <input type="file" id="nowe_zdjecie" accept="image/*" multiple>
+  <form class="reczny" id="reczny" autocomplete="off">
+    <input id="kod_reczny" inputmode="text" autocapitalize="characters" spellcheck="false">
+    <button type="submit" id="wyslij"></button>
+  </form>
+  <div class="komunikat" id="komunikat"></div>
+  <section class="karta" id="karta"></section>
+  <h3 id="tytul_historii" hidden></h3>
+  <ul class="lista historia" id="historia"></ul>
+  <details>
+    <summary id="instrukcja_tytul"></summary>
+    <p id="instrukcja_iphone"></p>
+    <p id="instrukcja_android"></p>
+    <p><a href="/ca.crt" id="pobierz_certyfikat"></a></p>
+  </details>
+  <details>
+    <summary id="tytul_diagnostyki"></summary>
+    <pre class="diagnostyka" id="diagnostyka"></pre>
+  </details>
+</main>
+<canvas id="plotno" hidden></canvas>
+<script src="/jsQR.js"></script>
+<script>
+"use strict";
+// Napisy w języku programu — wstawione przez serwer w chwili wyświetlenia strony.
+const T = {{NAPISY}};
+const $ = (id) => document.getElementById(id);
+
+// --- klucz parowania ------------------------------------------------------------
+// Zapamiętany w pamięci telefonu i wysyłany w nagłówku przy każdym skanie —
+// działa także wtedy, gdy przeglądarka zgubi ciasteczko. Z paska adresu znika
+// od razu, żeby nie został w historii.
+const MAGAZYN = "nornica_klucz";
+const zAdresu = new URLSearchParams(location.search).get("klucz");
+if (zAdresu) {
+  try { localStorage.setItem(MAGAZYN, zAdresu); } catch (e) {}
+  history.replaceState(null, "", "/");
+}
+let KLUCZ = zAdresu;
+try { KLUCZ = KLUCZ || localStorage.getItem(MAGAZYN); } catch (e) {}
+const plotno = $("plotno");
+const kontekst = plotno.getContext("2d", { willReadFrequently: true });
+let strumien = null, ostatniKod = "", ostatniCzas = 0, zajety = false, audio = null;
+
+// --- napisy ------------------------------------------------------------------
+$("naglowek").textContent = T["aplikacja.nazwa"] + " · " + T["mobilny.tytul"];
+$("aparat").textContent = T["mobilny.wlacz_aparat"];
+$("przycisk_zdjecia").textContent = T["mobilny.zrob_zdjecie"];
+$("kod_reczny").placeholder = T["mobilny.wpisz_kod"];
+$("wyslij").textContent = T["mobilny.wyslij"];
+$("celuj").textContent = T["mobilny.celuj"];
+$("tytul_historii").textContent = T["mobilny.historia"];
+$("instrukcja_tytul").textContent = T["mobilny.instrukcja_tytul"];
+$("instrukcja_iphone").textContent = T["mobilny.instrukcja_iphone"];
+$("instrukcja_android").textContent = T["mobilny.instrukcja_android"];
+$("pobierz_certyfikat").textContent = T["mobilny.pobierz_certyfikat"];
+$("tytul_diagnostyki").textContent = T["mobilny.diagnostyka"];
+
+function komunikat(tekst) {
+  const el = $("komunikat");
+  el.textContent = tekst || "";
+  el.style.display = tekst ? "block" : "none";
+}
+
+// Kamera na żywo działa tylko w „bezpiecznym kontekście” (HTTPS z zaufanym
+// certyfikatem). Bez niego zostaje tryb zdjęcia — działa zawsze.
+const kameraNaZywo = window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+if (!kameraNaZywo) {
+  $("aparat").disabled = true;
+  komunikat(T["mobilny.kamera_wymaga_certyfikatu"]);
+  document.querySelector("details").open = true;
+}
+
+// --- dźwięk potwierdzenia (iOS: kontekst audio tylko po dotknięciu) ------------
+function przygotujDzwiek() {
+  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
+}
+function pik(ok) {
+  if (navigator.vibrate) navigator.vibrate(ok ? 60 : [40, 60, 40]);
+  if (!audio) return;
+  const o = audio.createOscillator(), g = audio.createGain();
+  o.frequency.value = ok ? 1320 : 330; g.gain.value = 0.08;
+  o.connect(g); g.connect(audio.destination); o.start(); o.stop(audio.currentTime + 0.12);
+}
+
+// --- odczyt kodu z obrazu (jsQR) -------------------------------------------------
+function odczytaj(zrodlo, szer, wys, maks) {
+  const skala = Math.min(1, maks / Math.max(szer, wys));  // duże zdjęcie: zmniejszenie przed odczytem
+  plotno.width = Math.round(szer * skala); plotno.height = Math.round(wys * skala);
+  kontekst.drawImage(zrodlo, 0, 0, plotno.width, plotno.height);
+  const obraz = kontekst.getImageData(0, 0, plotno.width, plotno.height);
+  const wynik = jsQR(obraz.data, obraz.width, obraz.height, { inversionAttempts: "attemptBoth" });
+  return wynik ? wynik.data.trim() : null;
+}
+
+// --- kamera na żywo ------------------------------------------------------------
+// === uruchomKamere: początek (testowane w Node.js — bez odwołań do strony) ===
+// Kolejne, coraz prostsze ustawienia. Telefony z kilkoma obiektywami potrafią
+// odrzucić nawet „preferowane” ustawienia (tylna kamera, 1280 px) — wtedy
+// wystarcza „jakakolwiek kamera”.
+// Najpierw ŚCISŁE żądanie tylnej kamery: przy samym „preferowanym” część przeglądarek
+// (zgłoszenie: Samsung Internet) oddaje kamerę domyślną — przednią.
+const USTAWIENIA_KAMERY = [
+  { video: { facingMode: { exact: "environment" }, width: { ideal: 1280 } }, audio: false },
+  { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } }, audio: false },
+  { video: { facingMode: "environment" }, audio: false },
+  { video: true, audio: false },
+];
+
+// Rozpoznanie kamer po nazwach z enumerateDevices() (dostępnych po udzieleniu zgody):
+// Samsung/Chrome „camera2 0, facing back”, iPhone „Back Camera” / „Tylny aparat”.
+const WZOR_TYL = /back|rear|environment|tyln|tył/i;
+const WZOR_PRZOD = /front|user|selfie|przedn/i;
+
+function czyPrzednia(facingMode, etykieta) {
+  if (facingMode) return facingMode === "user";
+  return WZOR_PRZOD.test(etykieta || "") && !WZOR_TYL.test(etykieta || "");
+}
+
+function wybierzTylnaKamere(urzadzenia) {
+  // Obiektyw główny — najlepiej ostrzy z bliska. Na Androidzie ma NAJNIŻSZY numer
+  // („camera 0, facing back”), a kolejność na liście bywa dowolna (zgłoszenie z Samsunga:
+  // 1, 3, 2, 0 — pierwsza tylna na liście była obiektywem pomocniczym). Bez numerów
+  // (iPhone) — najkrótsza nazwa: „Tylny aparat” zamiast „Tylny aparat ultraszerokokątny”.
+  const tylne = urzadzenia.filter((u) => u.kind === "videoinput" && WZOR_TYL.test(u.label || ""));
+  const numer = (u) => { const m = /camera2?\s*(\d+)/i.exec(u.label || ""); return m ? Number(m[1]) : 999; };
+  tylne.sort((a, b) => numer(a) - numer(b) || (a.label || "").length - (b.label || "").length);
+  return tylne[0] || null;
+}
+
+function czyZapamietac(kamera) {
+  // Skaner naklejek nie ma powodu zaczynać od przedniej kamery — zapamiętujemy tylko tylne.
+  return !czyPrzednia(null, kamera && kamera.label);
+}
+
+function nastepnaKamera(urzadzenia, biezacyId) {
+  const kamery = urzadzenia.filter((u) => u.kind === "videoinput");
+  if (kamery.length < 2) return null;
+  const i = kamery.findIndex((u) => u.deviceId === biezacyId);
+  return kamery[(i + 1) % kamery.length];
+}
+
+function opisUstawien(u) {
+  const v = u.video;
+  if (v === true) return "dowolna kamera";
+  if (v.deviceId) return "kamera " + String(v.deviceId.exact || v.deviceId).slice(0, 8);
+  const f = v.facingMode;
+  return "facingMode " + (f && f.exact ? "exact " + f.exact : f && f.ideal ? "ideal " + f.ideal : f) +
+         (v.width ? " 1280" : "");
+}
+
+function opisBledu(blad) {
+  return blad ? (blad.name || "Error") + (blad.message ? ": " + blad.message : "") : "OK";
+}
+
+async function uruchomKamere(pobierz, czekaj, dziennik) {
+  // dziennik: lista {ustawienia, wynik} — diagnostyka na stronie (zgłoszenie: Samsung Internet)
+  dziennik = dziennik || [];
+  let ostatni = null;
+  for (const ustawienia of USTAWIENIA_KAMERY) {
+    // Kamera zajęta (np. aparat systemowy jeszcze jej nie zwolnił po „Zrób zdjęcie”):
+    // jedna ponowna próba po chwili, zanim przejdziemy do prostszych ustawień.
+    for (let proba = 0; proba < 2; proba++) {
+      try {
+        const strumien = await pobierz(ustawienia);
+        dziennik.push({ ustawienia: opisUstawien(ustawienia), wynik: "OK" });
+        return { strumien, blad: null, dziennik };
+      } catch (blad) {
+        ostatni = blad;
+        dziennik.push({ ustawienia: opisUstawien(ustawienia), wynik: opisBledu(blad) });
+        const nazwa = blad && blad.name;
+        if (nazwa === "NotAllowedError" || nazwa === "SecurityError") return { strumien: null, blad, dziennik };
+        if ((nazwa === "NotReadableError" || nazwa === "TrackStartError" || nazwa === "AbortError") && proba === 0) {
+          await czekaj(800);
+          continue;
+        }
+        break;
+      }
+    }
+  }
+  return { strumien: null, blad: ostatni, dziennik };
+}
+
+// Tylna kamera była żądana, ale odmówiła z powodu „zajętości”, a działa inna:
+// jasny komunikat zamiast cichego przejścia na przednią.
+function tylnaZajeta(dziennik) {
+  return dziennik.some((d) => d.ustawienia.indexOf("environment") >= 0 &&
+                             /NotReadableError|TrackStartError|AbortError/.test(d.wynik));
+}
+
+function kluczBleduKamery(blad) {
+  const nazwa = blad && blad.name;
+  if (nazwa === "NotAllowedError" || nazwa === "SecurityError") return "mobilny.kamera_odmowa";
+  if (nazwa === "NotReadableError" || nazwa === "TrackStartError" || nazwa === "AbortError") return "mobilny.kamera_zajeta";
+  if (nazwa === "NotFoundError" || nazwa === "OverconstrainedError" || nazwa === "DevicesNotFoundError") return "mobilny.kamera_brak";
+  return "mobilny.kamera_niedostepna";
+}
+// === uruchomKamere: koniec ===
+
+const MAGAZYN_KAMERY = "nornica_kamera";
+const pobierzObraz = (u) => navigator.mediaDevices.getUserMedia(u);
+const czekaj = (ms) => new Promise((r) => setTimeout(r, ms));
+const zatrzymaj = (s) => s && s.getTracks().forEach((t) => t.stop());
+
+function biezacaKamera(s) {
+  const sciezka = s && s.getVideoTracks()[0];
+  const ust = sciezka && sciezka.getSettings ? sciezka.getSettings() : {};
+  return { id: ust.deviceId || null, facingMode: ust.facingMode || null, etykieta: sciezka ? sciezka.label : "" };
+}
+
+async function kameryTelefonu() {
+  try { return (await navigator.mediaDevices.enumerateDevices()).filter((u) => u.kind === "videoinput"); }
+  catch (e) { return []; }
+}
+
+async function naTylnaJesliPrzednia(s, dziennik) {
+  // Przeglądarka oddała przednią mimo prośby o tylną: wybór tylnej z listy kamer.
+  const teraz = biezacaKamera(s);
+  if (!czyPrzednia(teraz.facingMode, teraz.etykieta)) return s;
+  const tyl = wybierzTylnaKamere(await kameryTelefonu());
+  if (!tyl || tyl.deviceId === teraz.id) return s;
+  zatrzymaj(s);                        // część Androidów nie otworzy drugiej kamery przy otwartej pierwszej
+  await czekaj(500);                   // Android zwalnia kamerę z opóźnieniem
+  const ustawienia = { video: { deviceId: { exact: tyl.deviceId } }, audio: false };
+  try {
+    const nowy = await pobierzObraz(ustawienia);
+    dziennik.push({ ustawienia: opisUstawien(ustawienia) + " (" + tyl.label + ")", wynik: "OK" });
+    return nowy;
+  } catch (blad) {
+    dziennik.push({ ustawienia: opisUstawien(ustawienia) + " (" + tyl.label + ")", wynik: opisBledu(blad) });
+    const wynik = await uruchomKamere(pobierzObraz, czekaj, dziennik);
+    return wynik.strumien;             // lepiej przednia niż żadna — jest przycisk „Przełącz aparat”
+  }
+}
+
+let ostatniDziennik = [];
+
+async function pokazDiagnostyke() {
+  const kamery = await kameryTelefonu();
+  const teraz = biezacaKamera(strumien);
+  const linie = [T["mobilny.diag_kamery"] + ":"];
+  kamery.forEach((k, i) => linie.push("  " + (i + 1) + ". " + (k.label || "(bez nazwy)") +
+                                     "  [" + String(k.deviceId).slice(0, 8) + "]"));
+  linie.push("", T["mobilny.diag_proby"] + ":");
+  ostatniDziennik.forEach((d) => linie.push("  " + d.ustawienia + " → " + d.wynik));
+  linie.push("", T["mobilny.diag_biezaca"] + ": " + (strumien ? (teraz.etykieta || "?") +
+             (teraz.facingMode ? " (" + teraz.facingMode + ")" : "") : "—"));
+  linie.push(navigator.userAgent);
+  $("diagnostyka").textContent = linie.join("\n");
+}
+
+async function przelaczAparat() {
+  const kamery = await kameryTelefonu();
+  const nastepna = nastepnaKamera(kamery, biezacaKamera(strumien).id);
+  if (!nastepna) return;
+  zatrzymaj(strumien);
+  await czekaj(500);                   // Android zwalnia kamerę z opóźnieniem
+  const ustawienia = { video: { deviceId: { exact: nastepna.deviceId } }, audio: false };
+  try {
+    strumien = await pobierzObraz(ustawienia);
+    ostatniDziennik.push({ ustawienia: opisUstawien(ustawienia) + " (" + nastepna.label + ")", wynik: "OK" });
+    try {                                // wybór na następne razy — tylko kamery tylne
+      if (czyZapamietac(nastepna)) localStorage.setItem(MAGAZYN_KAMERY, nastepna.deviceId);
+      else localStorage.removeItem(MAGAZYN_KAMERY);
+    } catch (e) {}
+    komunikat("");
+  } catch (blad) {
+    ostatniDziennik.push({ ustawienia: opisUstawien(ustawienia) + " (" + nastepna.label + ")", wynik: opisBledu(blad) });
+    strumien = null;
+    komunikat(T[kluczBleduKamery(blad)] + " (" + opisBledu(blad) + ")");
+    wylaczAparat();
+    pokazDiagnostyke();
+    return;
+  }
+  await pokazObraz();
+  pokazDiagnostyke();
+}
+
+async function pokazObraz() {
+  const wideo = $("wideo");
+  wideo.srcObject = strumien;
+  await wideo.play().catch(() => {});
+  $("podglad").style.display = "block";
+  $("aparat").textContent = T["mobilny.wylacz_aparat"];
+  $("przelacz").hidden = (await kameryTelefonu()).length < 2;
+  $("nazwa_kamery").textContent = biezacaKamera(strumien).etykieta || "";
+}
+
+async function wlaczAparat() {
+  przygotujDzwiek();
+  if (strumien) { wylaczAparat(); return; }
+  komunikat(T["mobilny.kamera_uruchamianie"]);
+  let wynik = null;
+  let zapamietana = null;
+  try { zapamietana = localStorage.getItem(MAGAZYN_KAMERY); } catch (e) {}
+  if (zapamietana) {                   // kamera wybrana wcześniej przyciskiem „Przełącz aparat”
+    try {
+      wynik = { strumien: await pobierzObraz({ video: { deviceId: { exact: zapamietana } }, audio: false }), blad: null };
+      const teraz = biezacaKamera(wynik.strumien);
+      if (czyPrzednia(teraz.facingMode, teraz.etykieta)) {
+        // zapamiętana przednia (ze starszej wersji strony) — zapominamy i szukamy tylnej
+        zatrzymaj(wynik.strumien);
+        wynik = null;
+        try { localStorage.removeItem(MAGAZYN_KAMERY); } catch (e3) {}
+        await czekaj(500);
+      }
+    } catch (e) {
+      wynik = null;
+      try { localStorage.removeItem(MAGAZYN_KAMERY); } catch (e2) {}
+    }
+  }
+  ostatniDziennik = [];
+  if (!wynik) {
+    wynik = await uruchomKamere(pobierzObraz, czekaj, ostatniDziennik);
+    if (wynik.strumien) wynik.strumien = await naTylnaJesliPrzednia(wynik.strumien, ostatniDziennik);
+  } else {
+    ostatniDziennik.push({ ustawienia: "zapamiętana kamera", wynik: "OK" });
+  }
+  if (!wynik.strumien) {
+    pokazDiagnostyke();
+    const b = wynik.blad;
+    // techniczny kod błędu w nawiasie — przyda się przy zgłoszeniu problemu
+    komunikat(T[kluczBleduKamery(b)] + (b && b.name ? " (" + b.name + (b.message ? ": " + b.message : "") + ")" : ""));
+    return;
+  }
+  strumien = wynik.strumien;
+  await pokazObraz();
+  const teraz = biezacaKamera(strumien);
+  // tylna odmówiła („zajęta”), działa przednia — powiedz to wprost
+  komunikat(czyPrzednia(teraz.facingMode, teraz.etykieta) && tylnaZajeta(ostatniDziennik)
+            ? T["mobilny.tyl_zajety"] : "");
+  pokazDiagnostyke();
+  skanujKlatki();
+}
+
+function wylaczAparat() {
+  if (strumien) strumien.getTracks().forEach((s) => s.stop());
+  strumien = null;
+  $("podglad").style.display = "none";
+  $("aparat").textContent = T["mobilny.wlacz_aparat"];
+}
+
+function skanujKlatki() {
+  if (!strumien) return;
+  const wideo = $("wideo");
+  if (wideo.readyState >= 2 && !zajety) {
+    const kod = odczytaj(wideo, wideo.videoWidth, wideo.videoHeight, 720);
+    const teraz = Date.now();
+    // ten sam kod drugi raz dopiero po 3 s — telefon trzymany nad naklejką nie wysyła serii
+    if (kod && (kod !== ostatniKod || teraz - ostatniCzas > 3000)) {
+      ostatniKod = kod; ostatniCzas = teraz;
+      wyslij(kod);
+    }
+  }
+  setTimeout(skanujKlatki, 150);
+}
+
+// --- tryb zdjęcia ----------------------------------------------------------------
+$("zdjecie").addEventListener("change", (zdarzenie) => {
+  przygotujDzwiek();
+  const plik = zdarzenie.target.files && zdarzenie.target.files[0];
+  zdarzenie.target.value = "";               // to samo zdjęcie można wybrać ponownie
+  if (!plik) return;
+  komunikat(T["mobilny.przetwarzanie"]);
+  const obraz = new Image();
+  const adres = URL.createObjectURL(plik);
+  obraz.onload = () => {
+    URL.revokeObjectURL(adres);
+    // najpierw szybko, w mniejszej skali; gdy się nie uda — większa skala
+    const kod = odczytaj(obraz, obraz.naturalWidth, obraz.naturalHeight, 1200)
+             || odczytaj(obraz, obraz.naturalWidth, obraz.naturalHeight, 2400);
+    if (kod) { komunikat(""); wyslij(kod); }
+    else { pik(false); komunikat(T["mobilny.brak_kodu_na_zdjeciu"]); }
+  };
+  obraz.onerror = () => { URL.revokeObjectURL(adres); komunikat(T["mobilny.brak_kodu_na_zdjeciu"]); };
+  obraz.src = adres;
+});
+
+$("aparat").addEventListener("click", wlaczAparat);
+$("przelacz").addEventListener("click", przelaczAparat);
+$("przelacz").textContent = T["mobilny.przelacz_aparat"];
+$("reczny").addEventListener("submit", (zdarzenie) => {
+  zdarzenie.preventDefault();
+  const kod = $("kod_reczny").value.trim();
+  if (kod) { wyslij(kod); $("kod_reczny").value = ""; $("kod_reczny").blur(); }
+});
+
+// --- wysłanie kodu i karta -----------------------------------------------------------
+const historia = [];
+
+async function wyslij(kod) {
+  zajety = true;
+  try {
+    const odpowiedz = await fetch("/api/skan", {
+      method: "POST", headers: { "Content-Type": "application/json", "X-Nornica-Klucz": KLUCZ || "" },
+      body: JSON.stringify({ kod }), credentials: "same-origin" });
+    if (odpowiedz.status === 403) {
+      // klucz unieważniony w programie („Nowy klucz”) — trzeba zeskanować kod parowania
+      try { localStorage.removeItem(MAGAZYN); } catch (e) {}
+      pik(false); komunikat(T["mobilny.brak_parowania"]); return;
+    }
+    if (!odpowiedz.ok) throw new Error(String(odpowiedz.status));
+    const karta = await odpowiedz.json();
+    pokaz(karta);
+    pik(karta.typ !== "nieznany");
+    if (karta.typ !== "nieznany") dopiszDoHistorii(karta);
+  } catch (blad) {
+    pik(false);
+    komunikat(T["mobilny.brak_polaczenia"]);
+  } finally {
+    setTimeout(() => { zajety = false; }, 800);
+  }
+}
+
+function element(znacznik, klasa, tekst) {
+  const el = document.createElement(znacznik);
+  if (klasa) el.className = klasa;
+  if (tekst !== undefined) el.textContent = tekst;   // textContent: nazwa nigdy nie jest HTML-em
+  return el;
+}
+
+function pokaz(karta) {
+  const el = $("karta");
+  el.replaceChildren();
+  el.className = "karta " + karta.typ;
+  const gora = element("div", "gora");
+  if (karta.zdjecie) {
+    const img = element("img"); img.alt = ""; img.src = "data:image/png;base64," + karta.zdjecie;
+    gora.appendChild(img);
+  }
+  const opis = element("div");
+  if (karta.typ !== "nieznany") opis.appendChild(element("div", "kod", karta.kod));
+  opis.appendChild(element("h2", "", karta.nazwa));
+  gora.appendChild(opis);
+  el.appendChild(gora);
+  if (karta.pola.length) {
+    const dl = element("dl");
+    karta.pola.forEach((p) => { dl.appendChild(element("dt", "", p.etykieta)); dl.appendChild(element("dd", "", p.wartosc)); });
+    el.appendChild(dl);
+  }
+  if (karta.lista_tytul) {
+    el.appendChild(element("h3", "", karta.lista_tytul));
+    const ul = element("ul", "lista");
+    karta.lista.forEach((p) => {
+      const li = element("li");
+      li.appendChild(element("span", "k", p.kod));
+      li.appendChild(element("span", "", p.nazwa));
+      li.appendChild(element("span", "s " + (p.status_kod || ""), p.status));
+      ul.appendChild(li);
+    });
+    el.appendChild(ul);
+  }
+  if (karta.typ === "egzemplarz") el.appendChild(sekcjaZdjec(karta));
+  el.style.display = "block";
+  el.classList.remove("blysk"); void el.offsetWidth; el.classList.add("blysk");
+  if (!strumien) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// --- zdjęcia z telefonu ------------------------------------------------------------
+let kodKarty = null;
+
+function sekcjaZdjec(karta) {
+  kodKarty = karta.kod;
+  const sekcja = element("div", "zdjecia");
+  const przycisk = element("label", "przycisk", T["mobilny.dodaj_zdjecie"]);
+  przycisk.htmlFor = "nowe_zdjecie";
+  sekcja.appendChild(przycisk);
+  const opcja = element("label", "opcja");
+  const pole = element("input"); pole.type = "checkbox"; pole.id = "jako_glowne";
+  pole.checked = !karta.zdjecie;            // domyślnie: gdy egzemplarz nie ma jeszcze zdjęcia głównego
+  opcja.appendChild(pole);
+  opcja.appendChild(document.createTextNode(T["mobilny.ustaw_glowne"]));
+  sekcja.appendChild(opcja);
+  const postep = element("div", "postep"); postep.id = "postep"; postep.appendChild(element("div"));
+  sekcja.appendChild(postep);
+  sekcja.appendChild(element("div", "liczba", T["mobilny.zdjecia"].replace("{liczba}", karta.zdjec || 0)));
+  return sekcja;
+}
+
+function wyslijZdjecie(kod, plik, glowne) {
+  // XMLHttpRequest zamiast fetch: daje postęp wysyłania
+  return new Promise((gotowe) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/zdjecie");
+    xhr.setRequestHeader("X-Nornica-Klucz", KLUCZ || "");
+    xhr.setRequestHeader("X-Nornica-Kod", encodeURIComponent(kod));
+    xhr.setRequestHeader("X-Nornica-Nazwa", encodeURIComponent(plik.name || ""));
+    xhr.setRequestHeader("X-Nornica-Glowne", glowne ? "1" : "0");
+    const pasek = document.querySelector("#postep div");
+    xhr.upload.onprogress = (z) => {
+      if (z.lengthComputable && pasek) {
+        const procent = Math.round(100 * z.loaded / z.total);
+        pasek.style.width = procent + "%";
+        komunikat(T["mobilny.wysylanie"].replace("{procent}", procent));
+      }
+    };
+    xhr.onload = () => {
+      let odpowiedz = {};
+      try { odpowiedz = JSON.parse(xhr.responseText); } catch (e) {}
+      gotowe({ status: xhr.status, odpowiedz });
+    };
+    xhr.onerror = () => gotowe({ status: 0, odpowiedz: {} });
+    xhr.send(plik);
+  });
+}
+
+$("nowe_zdjecie").addEventListener("change", async (zdarzenie) => {
+  const pliki = Array.from(zdarzenie.target.files || []);
+  zdarzenie.target.value = "";
+  const kod = kodKarty;
+  if (!pliki.length || !kod) return;
+  przygotujDzwiek();
+  const glowne = $("jako_glowne") && $("jako_glowne").checked;
+  if ($("postep")) $("postep").style.display = "block";
+  for (let i = 0; i < pliki.length; i++) {
+    // przy kilku zdjęciach naraz główne może zostać tylko pierwsze
+    const { status, odpowiedz } = await wyslijZdjecie(kod, pliki[i], glowne && i === 0);
+    if (status === 403) { try { localStorage.removeItem(MAGAZYN); } catch (e) {} }
+    if (status !== 200 || odpowiedz.blad) {
+      pik(false);
+      komunikat(odpowiedz.blad || (status === 0 ? T["mobilny.brak_polaczenia"] : T["mobilny.zdjecie_blad"]));
+      return;
+    }
+    pokaz(odpowiedz);
+    if ($("postep")) $("postep").style.display = "block";
+  }
+  pik(true);
+  komunikat(pliki.length > 1 ? T["mobilny.zdjecia_dodane"].replace("{liczba}", pliki.length) : T["mobilny.zdjecie_dodane"]);
+  if ($("postep")) $("postep").style.display = "none";
+});
+
+function dopiszDoHistorii(karta) {
+  const istniejacy = historia.findIndex((h) => h.kod === karta.kod);
+  if (istniejacy >= 0) historia.splice(istniejacy, 1);
+  historia.unshift({ kod: karta.kod, nazwa: karta.nazwa });
+  historia.splice(10);
+  const ul = $("historia");
+  ul.replaceChildren();
+  historia.forEach((h) => {
+    const li = element("li");
+    li.appendChild(element("span", "k", h.kod));
+    li.appendChild(element("span", "", h.nazwa));
+    li.addEventListener("click", () => wyslij(h.kod));
+    ul.appendChild(li);
+  });
+  $("tytul_historii").hidden = historia.length === 0;
+}
+
+// Aparat wyłączany, gdy strona znika z ekranu (oszczędność baterii, iOS i tak go wstrzymuje)
+document.addEventListener("visibilitychange", () => { if (document.hidden) wylaczAparat(); });
+// Android: strona odkładana do pamięci (bfcache) nie zawsze zgłasza ukrycie — kamera zwalniana i tu
+window.addEventListener("pagehide", wylaczAparat);
+// Aparat systemowy („Zrób zdjęcie”, „Dodaj zdjęcia”) i kamera na żywo nie mogą działać naraz:
+// zwolnienie kamery PRZED otwarciem aparatu systemowego.
+document.addEventListener("click", (z) => {
+  const etykieta = z.target.closest && z.target.closest("label[for]");
+  if (etykieta && (etykieta.htmlFor === "zdjecie" || etykieta.htmlFor === "nowe_zdjecie")) wylaczAparat();
+}, true);
+</script>
+</body>
+</html>

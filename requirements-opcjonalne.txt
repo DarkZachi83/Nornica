@@ -1,0 +1,3 @@
+# Eksport do starego formatu .xls (Excel 97-2003).
+# Biblioteka nie jest już rozwijana; bez niej opcja .xls jest wyłączona.
+xlwt>=1.3

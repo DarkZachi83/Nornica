@@ -1,0 +1,6 @@
+# Tylko do uruchamiania testów (nie są potrzebne do pracy programu).
+-r requirements.txt
+-r requirements-opcjonalne.txt
+pypdf>=3.0            # sprawdzanie arkuszy etykiet PDF
+pyzbar>=0.1.9         # odczyt kodów QR z wygenerowanych etykiet (wymaga libzbar)
+xlrd>=2.0             # odczyt eksportu .xls

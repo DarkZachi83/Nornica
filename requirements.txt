@@ -1,0 +1,9 @@
+# Program uruchomi się bez nich; brakująca biblioteka wyłącza tylko swoją funkcję
+# i program o tym informuje.
+Pillow>=10.0          # miniatury i podgląd zdjęć; też narzedzia/generuj_grafiki.py
+openpyxl>=3.1         # eksport .xlsx
+qrcode>=7.4           # kody QR na karcie i etykietach
+reportlab>=4.0        # arkusze etykiet PDF
+cryptography>=41      # szyfrowane połączenie ze skanerem w telefonie (kamera na żywo)
+# Integracja z The Retro Web korzysta tylko z biblioteki standardowej.
+# Każda nowa biblioteka trafia też do THIRD_PARTY_NOTICES.md (pilnuje tego test).
