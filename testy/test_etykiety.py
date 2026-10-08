@@ -257,6 +257,7 @@ class TestGuiEtykiet(TestPrzebudowy):
         self.assertEqual("LOC-0001", plotno.itemcget(plotno.find_withtag("podpis")[0], "text"))
 
     @unittest.skipUnless(DEKODER, "brak dekodera QR")
+    @unittest.skipUnless(shutil.which("import"), "brak ImageMagick (zrzut ekranu)")
     def test_kod_na_ekranie_skanowalny(self):
         """Kod z karty da się zeskanować także z ekranu (telefonem)."""
         import subprocess

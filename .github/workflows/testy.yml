@@ -12,12 +12,12 @@ jobs:
       matrix:
         python: ["3.10", "3.12"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
-      - name: Biblioteki systemowe (wirtualny ekran, zbar, czcionki)
-        run: sudo apt-get update && sudo apt-get install -y xvfb libzbar0 fonts-dejavu-core
+      - name: Programy systemowe (wirtualny ekran, zbar, czcionki, narzędzia PDF)
+        run: sudo apt-get update && sudo apt-get install -y xvfb libzbar0 fonts-dejavu-core imagemagick poppler-utils qpdf ghostscript
       - name: Zależności
         run: pip install -r requirements-dev.txt
       - name: Testy (z interfejsem na wirtualnym ekranie)
