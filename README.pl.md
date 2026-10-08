@@ -34,6 +34,9 @@ w trakcie pracy programu.
   najpierw podgląd, potem wpisanie do formularza. Tylko dane tekstowe,
   licencja CC BY-SA 4.0, źródło zostaje w opisie.
 - **Zdjęcia, dokumenty i odnośniki** dla egzemplarzy i modeli.
+- **Porządki w kolekcji** — pliki bez powiązań i bez wpisu, puste lokalizacje,
+  nieużywane modele i producenci, egzemplarze bez miejsca i powtórzone numery
+  seryjne; nic nie znika bez Twojego potwierdzenia.
 - **Eksport** — `.xlsx`, `.xls`, `.csv`, `.html`.
 - **Bezpieczne dane** — SQLite, atomowe migracje schematu z sumami
   kontrolnymi i automatyczną kopią zapasową przed każdą aktualizacją.

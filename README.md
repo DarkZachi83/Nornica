@@ -33,6 +33,9 @@ The interface is available in English (**VOLE**) and Polish (**NORNICA**,
   preview first, then apply to the form. Text data only, CC BY-SA 4.0 with
   attribution kept.
 - **Photos, documents and links** for items and models.
+- **Collection clean-up** — find unattached files, files without a record, empty
+  locations, unused models and manufacturers, items without a place and
+  repeated serial numbers; nothing is deleted without your confirmation.
 - **Export** — `.xlsx`, `.xls`, `.csv`, `.html`.
 - **Safe data** — SQLite with atomic, checksummed schema migrations and an
   automatic backup before every upgrade.

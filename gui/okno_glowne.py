@@ -202,6 +202,7 @@ class OknoGlowne(tk.Tk):
         plik.add_command(label=t("akcja.etykiety"), accelerator="Ctrl+P", command=self.drukuj_etykiety)
         plik.add_command(label=t("akcja.eksport"), accelerator="Ctrl+E", command=self.eksportuj)
         plik.add_command(label=t("akcja.slowniki"), command=self.slowniki)
+        plik.add_command(label=t("akcja.porzadki"), command=self.porzadki)
         plik.add_separator()
         plik.add_command(label=t("akcja.telefon"), accelerator="Ctrl+T", command=self.telefon)
         plik.add_separator()
@@ -590,6 +591,17 @@ class OknoGlowne(tk.Tk):
                 okno.lift()
                 return okno
         okno = OknoSlownikow(self)
+        okno.pokaz()
+        return okno
+
+    def porzadki(self):
+        """Jedno okno porządków: ponowne wywołanie wyciąga istniejące na wierzch."""
+        from gui.okno_porzadkow import OknoPorzadkow
+        for okno in self._dialogi:
+            if isinstance(okno, OknoPorzadkow) and okno.winfo_exists():
+                okno.lift()
+                return okno
+        okno = OknoPorzadkow(self)
         okno.pokaz()
         return okno
 
