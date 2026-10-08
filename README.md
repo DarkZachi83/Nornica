@@ -27,6 +27,10 @@ The interface is available in English (**VOLE**) and Polish (**NORNICA**,
 - **Phone as a scanner** — the program starts a local HTTPS server and shows a
   QR code; the phone opens a web page (no app to install), scans labels with the
   live camera and can add photos to an item. Works on Android and iPhone.
+- **Stocktake with the phone** — scan a rack's label, tap "Start stocktake here"
+  and scan everything that is really there; the program compares it with the
+  database (sub-locations included) and reports what is in place, what was found
+  here but is recorded elsewhere, and what is missing (File → Stocktakes…).
 - **USB / Bluetooth barcode readers** — the *Scan* field in the toolbar (F2).
 - **The Retro Web import** — fill in a PC hardware model (motherboards,
   expansion cards, drives) from [The Retro Web](https://theretroweb.com):

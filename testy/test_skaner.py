@@ -618,7 +618,7 @@ class TestNapisowStronyTelefonu(unittest.TestCase):
         from uslugi.serwer_mobilny import KLUCZE_STRONY
         from i18n.tlumacz import ma_klucz
         html = (KORZEN / "zasoby" / "www" / "skaner.html").read_text(encoding="utf-8")
-        uzyte = set(re.findall(r'"((?:mobilny|aplikacja)\.[a-z_]+)"', html))
+        uzyte = set(re.findall(r'"((?:mobilny|aplikacja|inw\.tel)\.[a-z_]+)"', html))
         self.assertTrue(uzyte)
         self.assertEqual(set(), uzyte - set(KLUCZE_STRONY))
         self.assertEqual([], [k for k in KLUCZE_STRONY if not ma_klucz(k)])

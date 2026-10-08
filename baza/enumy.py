@@ -22,6 +22,7 @@ ENUMY: dict[str, tuple[str, tuple[str, ...]]] = {
     "zdarzenie.typ": ("zdarzenie.typ", ("test", "naprawa")),
     "zdarzenie.podtyp": ("zdarzenie.podtyp", ("naprawa", "modyfikacja")),
     "zdarzenie.wynik": ("zdarzenie.wynik", ("ok", "czesciowo", "blad")),
+    "inwentaryzacja_wynik.wynik": ("inw.grupa", ("na_miejscu", "nie_na_miejscu", "brak")),
 }
 
 

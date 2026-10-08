@@ -70,7 +70,7 @@ class TestMigracji005(unittest.TestCase):
         return json.loads(self.db.execute(f"SELECT atrybuty FROM {tabela} WHERE id = ?", (id_,)).fetchone()[0])
 
     def test_przeliczenie_wartosci_i_szablonow(self):
-        self.assertEqual([5], migruj(self.db)[0])
+        self.assertEqual(5, migruj(self.db)[0][0])          # 005 jako pierwsza z oczekujących
         self.assertEqual({"procesor": "6510", "pamiec": 65536}, self.atrybuty("model", 1))
         self.assertEqual({"pojemnosc": 524288}, self.atrybuty("model", 2))
         self.assertEqual({"pamiec": 327680}, self.atrybuty("egzemplarz", 1))

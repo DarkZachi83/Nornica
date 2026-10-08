@@ -68,6 +68,25 @@
   .zdjecia .liczba { color: var(--opis); font-size: 13px; margin-top: 8px; }
   .postep { height: 6px; background: var(--linia); border-radius: 3px; overflow: hidden; margin-top: 10px; display: none; }
   .postep div { height: 100%; width: 0; background: var(--akcent); transition: width .2s; }
+  /* --- inwentaryzacja --- */
+  .inw { background: var(--panel); border-radius: 12px; padding: 14px; margin: 12px 0; box-shadow: 0 1px 0 var(--linia);
+         border-left: 5px solid var(--drewno); }
+  .inw[hidden] { display: none; }
+  .inw h2 { margin: 0 0 4px; font-size: 18px; color: var(--drewno); }
+  .inw .instrukcja { color: var(--opis); font-size: 14px; margin: 0 0 8px; }
+  .inw .licznik { font-weight: 700; font-size: 17px; margin-top: 6px; }
+  .inw .postep { display: block; }
+  .inw .wynik { margin-top: 10px; padding: 10px 12px; border-radius: 10px; font-size: 15px; display: none; }
+  .wynik.na_miejscu, .wynik.juz, .wynik.lokalizacja { background: #E3EFE7; color: #1F4F38; }
+  .wynik.nie_na_miejscu { background: #FBEBD9; color: #7A4510; }
+  .wynik.nieznany { background: #F6E1DC; color: var(--czerwony); }
+  .wynik b { display: block; }
+  .inw .akcje { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-top: 12px; }
+  ul.lista li.na_miejscu::before { content: "✓"; color: var(--akcent); font-weight: 700; }
+  ul.lista li.nie_na_miejscu::before { content: "!"; color: var(--pomaranczowy); font-weight: 700; width: .7em; text-align: center; }
+  ul.lista li.brak::before { content: "✗"; color: var(--czerwony); font-weight: 700; }
+  ul.lista .opis { display: block; color: var(--opis); font-size: 12px; }
+  button.inw_start { width: 100%; margin-top: 12px; background: var(--drewno); color: #fff; }
   .blysk { animation: blysk .5s; }
   @keyframes blysk { from { box-shadow: 0 0 0 4px var(--akcent); } to { box-shadow: 0 1px 0 var(--linia); } }
 </style>
@@ -93,6 +112,7 @@
     <button type="submit" id="wyslij"></button>
   </form>
   <div class="komunikat" id="komunikat"></div>
+  <section class="inw" id="inw" hidden></section>
   <section class="karta" id="karta"></section>
   <h3 id="tytul_historii" hidden></h3>
   <ul class="lista historia" id="historia"></ul>
@@ -478,6 +498,7 @@ $("reczny").addEventListener("submit", (zdarzenie) => {
 const historia = [];
 
 async function wyslij(kod) {
+  if (inwSesja) return wyslijInw(kod);
   zajety = true;
   try {
     const odpowiedz = await fetch("/api/skan", {
@@ -540,6 +561,12 @@ function pokaz(karta) {
     el.appendChild(ul);
   }
   if (karta.typ === "egzemplarz") el.appendChild(sekcjaZdjec(karta));
+  if (karta.typ === "lokalizacja") {
+    const start = element("button", "inw_start", T["inw.tel.rozpocznij"]);
+    start.type = "button";
+    start.addEventListener("click", () => rozpocznijInw(karta.kod));
+    el.appendChild(start);
+  }
   el.style.display = "block";
   el.classList.remove("blysk"); void el.offsetWidth; el.classList.add("blysk");
   if (!strumien) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -634,6 +661,153 @@ function dopiszDoHistorii(karta) {
   });
   $("tytul_historii").hidden = historia.length === 0;
 }
+
+// --- inwentaryzacja ------------------------------------------------------------------
+// Sesja żyje w programie (baza); telefon pamięta tylko jej numer — odświeżenie
+// strony albo powrót po wygaszeniu ekranu wznawia sesję.
+const MAGAZYN_INW = "nornica_inwentaryzacja";
+let inwSesja = null;
+
+async function zapytanieInw(dane) {
+  const odpowiedz = await fetch("/api/inwentaryzacja", {
+    method: "POST", headers: { "Content-Type": "application/json", "X-Nornica-Klucz": KLUCZ || "" },
+    body: JSON.stringify(dane), credentials: "same-origin" });
+  if (odpowiedz.status === 403) {
+    try { localStorage.removeItem(MAGAZYN); } catch (e) {}
+    throw new Error(T["mobilny.brak_parowania"]);
+  }
+  if (!odpowiedz.ok) throw new Error(T["mobilny.brak_polaczenia"]);
+  const wynik = await odpowiedz.json();
+  if (wynik.blad) throw new Error(wynik.blad);
+  return wynik;
+}
+
+function ustawSesje(numer) {
+  inwSesja = numer;
+  try {
+    if (numer) localStorage.setItem(MAGAZYN_INW, String(numer)); else localStorage.removeItem(MAGAZYN_INW);
+  } catch (e) {}
+  $("karta").style.display = inwSesja ? "none" : $("karta").style.display;
+  $("historia").hidden = !!inwSesja;
+  $("tytul_historii").hidden = !!inwSesja || historia.length === 0;
+}
+
+function listaPozycji(pozycje) {
+  const ul = element("ul", "lista");
+  pozycje.forEach((p) => {
+    const li = element("li", p.wynik);
+    li.appendChild(element("span", "k", p.kod));
+    const opis = element("span", "", p.nazwa);
+    if (p.opis) opis.appendChild(element("span", "opis", p.opis));
+    li.appendChild(opis);
+    ul.appendChild(li);
+  });
+  return ul;
+}
+
+function pokazInw(stan, skan) {
+  const el = $("inw");
+  el.replaceChildren();
+  el.hidden = false;
+  el.appendChild(element("h2", "", T["inw.tel.tytul"].replace("{nazwa}", stan.lokalizacja)));
+  el.appendChild(element("p", "instrukcja", T["inw.tel.instrukcja"]));
+  el.appendChild(element("div", "licznik", stan.postep));
+  const pasek = element("div", "postep"); const wypelnienie = element("div");
+  wypelnienie.style.width = (stan.oczekiwane ? Math.round(100 * stan.znalezione / stan.oczekiwane) : 100) + "%";
+  pasek.appendChild(wypelnienie); el.appendChild(pasek);
+  const wynik = element("div", "wynik"); wynik.id = "inw_wynik";
+  if (skan) {
+    wynik.className = "wynik " + skan.wynik;
+    if (skan.nazwa) wynik.appendChild(element("b", "", (skan.kod ? skan.kod + "  " : "") + skan.nazwa));
+    wynik.appendChild(document.createTextNode(skan.tekst));
+    wynik.style.display = "block";
+  }
+  el.appendChild(wynik);
+  const akcje = element("div", "akcje");
+  const koniec = element("button", "glowny", T["inw.tel.zakoncz"]); koniec.type = "button";
+  koniec.addEventListener("click", zakonczInw);
+  const anuluj = element("button", "", T["inw.tel.anuluj"]); anuluj.type = "button";
+  anuluj.addEventListener("click", anulujInw);
+  akcje.appendChild(koniec); akcje.appendChild(anuluj);
+  el.appendChild(akcje);
+  if (stan.pozycje.length) {
+    el.appendChild(element("h3", "", T["inw.tel.zeskanowane"]));
+    el.appendChild(listaPozycji(stan.pozycje));
+  }
+  if (skan) { el.classList.remove("blysk"); void el.offsetWidth; el.classList.add("blysk"); }
+}
+
+async function rozpocznijInw(kodLokalizacji) {
+  przygotujDzwiek();
+  try {
+    const stan = await zapytanieInw({ akcja: "start", kod: kodLokalizacji });
+    ustawSesje(stan.sesja);
+    $("karta").style.display = "none";
+    komunikat("");
+    pokazInw(stan, null);
+    $("inw").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (blad) { pik(false); komunikat(blad.message); }
+}
+
+async function wyslijInw(kod) {
+  zajety = true;
+  try {
+    const odp = await zapytanieInw({ akcja: "skan", sesja: inwSesja, kod });
+    komunikat("");
+    pokazInw(odp.stan, odp.skan);
+    pik(odp.skan.wynik !== "nie_na_miejscu" && odp.skan.wynik !== "nieznany");
+  } catch (blad) { pik(false); komunikat(blad.message); }
+  finally { setTimeout(() => { zajety = false; }, 800); }
+}
+
+async function zakonczInw() {
+  if (!confirm(T["inw.tel.pytanie_zakoncz"])) return;
+  try {
+    const { raport } = await zapytanieInw({ akcja: "koniec", sesja: inwSesja });
+    ustawSesje(null);
+    wylaczAparat();
+    pokazRaport(raport);
+  } catch (blad) { pik(false); komunikat(blad.message); }
+}
+
+async function anulujInw() {
+  if (!confirm(T["inw.tel.pytanie_anuluj"])) return;
+  try { await zapytanieInw({ akcja: "anuluj", sesja: inwSesja }); } catch (e) {}
+  ustawSesje(null);
+  $("inw").hidden = true;
+}
+
+function pokazRaport(raport) {
+  const el = $("inw");
+  el.replaceChildren();
+  el.hidden = false;
+  el.appendChild(element("h2", "", T["inw.tel.raport"].replace("{nazwa}", raport.lokalizacja)));
+  el.appendChild(element("div", "licznik", raport.podsumowanie));
+  [["brak", "inw.tel.brakujace"], ["nie_na_miejscu", "inw.tel.nie_na_miejscu_tytul"],
+   ["na_miejscu", "inw.tel.na_miejscu_tytul"]].forEach(([grupa, klucz]) => {
+    const pozycje = raport.grupy[grupa] || [];
+    if (!pozycje.length) return;
+    el.appendChild(element("h3", "", T[klucz] + " (" + pozycje.length + ")"));
+    el.appendChild(listaPozycji(pozycje));
+  });
+  const zamknij = element("button", "", T["inw.tel.zamknij_raport"]); zamknij.type = "button";
+  zamknij.style.width = "100%"; zamknij.style.marginTop = "12px";
+  zamknij.addEventListener("click", () => { el.hidden = true; ustawSesje(null); });
+  el.appendChild(zamknij);
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+(async () => {                     // wznowienie sesji po odświeżeniu strony
+  let zapamietana = null;
+  try { zapamietana = localStorage.getItem(MAGAZYN_INW); } catch (e) {}
+  if (!zapamietana) return;
+  try {
+    const { stan } = await zapytanieInw({ akcja: "stan", sesja: zapamietana });
+    if (stan.zakonczono) { ustawSesje(null); return; }
+    ustawSesje(stan.sesja);
+    pokazInw(stan, null);
+  } catch (e) { ustawSesje(null); }
+})();
 
 // Aparat wyłączany, gdy strona znika z ekranu (oszczędność baterii, iOS i tak go wstrzymuje)
 document.addEventListener("visibilitychange", () => { if (document.hidden) wylaczAparat(); });

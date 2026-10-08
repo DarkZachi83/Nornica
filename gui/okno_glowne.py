@@ -203,6 +203,7 @@ class OknoGlowne(tk.Tk):
         plik.add_command(label=t("akcja.etykiety"), accelerator="Ctrl+P", command=self.drukuj_etykiety)
         plik.add_command(label=t("akcja.eksport"), accelerator="Ctrl+E", command=self.eksportuj)
         plik.add_command(label=t("akcja.slowniki"), command=self.slowniki)
+        plik.add_command(label=t("akcja.inwentaryzacje"), command=self.inwentaryzacje)
         plik.add_command(label=t("akcja.porzadki"), command=self.porzadki)
         plik.add_command(label=t("akcja.kopia"), accelerator="Ctrl+B", command=self.kopia_zapasowa)
         plik.add_separator()
@@ -311,6 +312,10 @@ class OknoGlowne(tk.Tk):
         self.after_idle(self._przywroc_podzial)
         self._widzety["licznik"].configure(text=t("pasek.licznik", egzemplarze=len(egz),
                                            lokalizacje=len(lok)))
+        self.powiadom_okna()
+
+    def powiadom_okna(self) -> None:
+        """Otwarte okna liczą swoje dane od nowa (bez przebudowy drzewa)."""
         for okno in list(self._dialogi):
             if okno.winfo_exists() and hasattr(okno, "dane_zmienione"):
                 okno.dane_zmienione()
@@ -504,6 +509,12 @@ class OknoGlowne(tk.Tk):
             return skaner.karta_mobilna(self.db, wynik)
         if rodzaj == "zdjecie":
             return self._zdjecie_z_telefonu(dane)
+        if rodzaj == "inwentaryzacja":
+            from uslugi import inwentaryzacja
+            try:
+                return inwentaryzacja.obsluga_telefonu(self.db, dane)
+            finally:
+                self.powiadom_okna()       # otwarte okno inwentaryzacji pokazuje skany na żywo
         raise ValueError(rodzaj)
 
     def _zdjecie_z_telefonu(self, dane: dict) -> dict:
@@ -604,6 +615,17 @@ class OknoGlowne(tk.Tk):
                 okno.lift()
                 return okno
         okno = OknoPorzadkow(self)
+        okno.pokaz()
+        return okno
+
+    def inwentaryzacje(self):
+        """Jedno okno inwentaryzacji: ponowne wywołanie wyciąga istniejące na wierzch."""
+        from gui.okno_inwentaryzacji import OknoInwentaryzacji
+        for okno in self._dialogi:
+            if isinstance(okno, OknoInwentaryzacji) and okno.winfo_exists():
+                okno.lift()
+                return okno
+        okno = OknoInwentaryzacji(self)
         okno.pokaz()
         return okno
 

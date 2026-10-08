@@ -28,6 +28,10 @@ w trakcie pracy programu.
 - **Telefon jako skaner** — program uruchamia lokalny serwer HTTPS i pokazuje
   kod QR; telefon otwiera stronę w przeglądarce (bez instalowania aplikacji),
   skanuje etykiety kamerą na żywo i dodaje zdjęcia. Android i iPhone.
+- **Inwentaryzacja telefonem** — zeskanuj etykietę regału, dotknij „Rozpocznij
+  inwentaryzację” i skanuj wszystko, co tam naprawdę jest; program porównuje to
+  z bazą (razem z podlokalizacjami) i pokazuje, co jest na miejscu, co znalazło
+  się tu, choć w bazie leży gdzie indziej, i czego brakuje (Plik → Inwentaryzacje…).
 - **Czytniki kodów USB / Bluetooth** — pole „Skanuj” na pasku (F2).
 - **Dane z The Retro Web** — uzupełnienie modelu sprzętu PC (płyty główne,
   karty rozszerzeń, napędy) z serwisu [The Retro Web](https://theretroweb.com):

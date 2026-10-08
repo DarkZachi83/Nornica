@@ -66,6 +66,9 @@ KLUCZE_STRONY = (
     "mobilny.zdjecia_dodane", "mobilny.kamera_zajeta", "mobilny.kamera_brak", "mobilny.kamera_uruchamianie",
     "mobilny.przelacz_aparat", "mobilny.tyl_zajety", "mobilny.diagnostyka", "mobilny.diag_kamery",
     "mobilny.diag_proby", "mobilny.diag_biezaca",
+    "inw.tel.rozpocznij", "inw.tel.tytul", "inw.tel.instrukcja", "inw.tel.zakoncz", "inw.tel.anuluj",
+    "inw.tel.zeskanowane", "inw.tel.pytanie_zakoncz", "inw.tel.pytanie_anuluj", "inw.tel.raport",
+    "inw.tel.brakujace", "inw.tel.nie_na_miejscu_tytul", "inw.tel.na_miejscu_tytul", "inw.tel.zamknij_raport",
 )
 
 
@@ -246,9 +249,10 @@ class _Obsluga(BaseHTTPRequestHandler):
 
     # --- POST ----------------------------------------------------------------------
     def do_POST(self):
-        if urlsplit(self.path).path == "/api/zdjecie":
+        sciezka = urlsplit(self.path).path
+        if sciezka == "/api/zdjecie":
             return self._przyjmij_zdjecie()
-        if urlsplit(self.path).path != "/api/skan":
+        if sciezka not in ("/api/skan", "/api/inwentaryzacja"):
             return self._strona_bledu(404, "mobilny.nie_znaleziono")
         if not self._uprawniony():
             return self._wyslij(403, b'{"blad":"403"}', "application/json")
@@ -259,14 +263,23 @@ class _Obsluga(BaseHTTPRequestHandler):
         if not 0 < dlugosc <= MAKS_ZAPYTANIE:
             return self._wyslij(413, b'{"blad":"413"}', "application/json")
         try:
-            kod = str(json.loads(self.rfile.read(dlugosc)).get("kod", ""))[:64]
-        except (ValueError, AttributeError):
+            tresc = json.loads(self.rfile.read(dlugosc))
+            if not isinstance(tresc, dict):
+                raise ValueError
+        except ValueError:
             return self._wyslij(400, b'{"blad":"400"}', "application/json")
+        if sciezka == "/api/skan":
+            rodzaj, dane = "skan", str(tresc.get("kod", ""))[:64]
+        else:
+            # tylko znane pola, przycięte — do wątku interfejsu nie trafia nic więcej
+            rodzaj, dane = "inwentaryzacja", {"akcja": str(tresc.get("akcja", ""))[:16],
+                                              "kod": str(tresc.get("kod", ""))[:64],
+                                              "sesja": str(tresc.get("sesja", ""))[:12]}
         try:
-            karta = self.server.most.zapytaj("skan", kod)
+            odpowiedz = self.server.most.zapytaj(rodzaj, dane)
         except queue.Empty:
             return self._wyslij(503, b'{"blad":"503"}', "application/json")
-        self._wyslij(200, json.dumps(karta, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
+        self._json(200, odpowiedz)
 
 
     def _json(self, kod: int, dane: dict) -> None:
