@@ -13,6 +13,7 @@ from tkinter import messagebox, ttk
 
 from baza.enumy import opcje
 from baza.repozytoria import slowniki
+from baza.repozytoria.slowniki import klucz_kolejnosci
 from gui.bazowe import OknoDialogowe, pokaz_blad
 from gui.pola import PoleTekstu, PoleWyboru
 from i18n.tlumacz import jezyk_biezacy, nazwa, t
@@ -144,7 +145,7 @@ class OknoSlownikow(OknoDialogowe):
             dzieci.setdefault(w["rodzic_id"], []).append(w)
 
         def dodaj(rodzic_iid, rodzic_id):
-            for w in sorted(dzieci.get(rodzic_id, []), key=lambda w: (w["kolejnosc"], w["id"])):
+            for w in sorted(dzieci.get(rodzic_id, []), key=klucz_kolejnosci):
                 tekst = nazwa(w["nazwy"]) + ("" if w["kod"] else f"  ({t('slowniki.wlasna_kategoria')})")
                 self._drzewo.insert(rodzic_iid, "end", iid=str(w["id"]), text=tekst, open=True)
                 dodaj(str(w["id"]), w["id"])

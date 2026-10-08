@@ -18,14 +18,14 @@ def zlacza_egzemplarza(db: sqlite3.Connection, egz_id: int) -> list[dict]:
     for w in db.execute("SELECT zlacze_typ_id, rola, ilosc FROM egzemplarz_zlacze WHERE egzemplarz_id = ?",
                         (egz_id,)):
         zlacza[(w[0], w[1])] = {"ilosc": w[2], "zmienione": True}
-    typy = {w["id"]: w for w in db.execute("SELECT id, rodzaj, nazwy, kolejnosc FROM zlacze_typ")}
+    typy = {w["id"]: w for w in db.execute("SELECT id, kod, rodzaj, nazwy, kolejnosc FROM zlacze_typ")}
     wynik = []
     for (typ_id, rola), dane in zlacza.items():
         if dane["ilosc"] > 0:
             typ = typy[typ_id]
             wynik.append({"rodzaj": typ["rodzaj"], "nazwy": typ["nazwy"], "rola": rola,
                           "ilosc": dane["ilosc"], "zmienione": dane["zmienione"],
-                          "kolejnosc": typ["kolejnosc"]})
+                          "kolejnosc": (typ["kod"] is None, typ["kolejnosc"], typ_id)})
     return sorted(wynik, key=lambda z: (z["rola"], z["kolejnosc"]))
 
 

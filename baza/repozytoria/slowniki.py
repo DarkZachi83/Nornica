@@ -5,12 +5,11 @@ from __future__ import annotations
 import json
 import sqlite3
 
-from baza.polaczenie import klucz_sortowania
 from i18n.tlumacz import nazwa
 
 
 def statusy(db: sqlite3.Connection) -> list[sqlite3.Row]:
-    return db.execute("SELECT id, kod, nazwy FROM status ORDER BY kolejnosc, id").fetchall()
+    return db.execute("SELECT id, kod, nazwy FROM status ORDER BY kod IS NULL, kolejnosc, id").fetchall()
 
 
 def status_id(db: sqlite3.Connection, kod: str) -> int | None:
@@ -46,6 +45,14 @@ def producent_id(db: sqlite3.Connection, nazwa_: str | None, utworz: bool = Fals
     return None
 
 
+def klucz_kolejnosci(wiersz) -> tuple:
+    """Sortowanie wpisów słownika: wbudowane według listy w programie, własne
+    za nimi w kolejności dodania. Własne dostają przy dodaniu MAX(kolejnosc)+1,
+    ale lista wbudowanych rośnie z wersjami programu — bez pierwszego członu
+    nowa pozycja wbudowana mogłaby wskoczyć między własne."""
+    return (wiersz["kod"] is None, wiersz["kolejnosc"], wiersz["id"])
+
+
 # ---------------------------------------------------------------------------
 # Kategorie
 # ---------------------------------------------------------------------------
@@ -68,8 +75,7 @@ def kategorie_plasko(db: sqlite3.Connection, jezyk: str | None = None) -> list[t
     wynik = []
 
     def zejdz(rodzic, glebokosc):
-        for w in sorted(dzieci.get(rodzic, []),
-                        key=lambda w: (w["kolejnosc"], klucz_sortowania(nazwa(w["nazwy"], jezyk)))):
+        for w in sorted(dzieci.get(rodzic, []), key=klucz_kolejnosci):
             wynik.append((w["id"], glebokosc, nazwa(w["nazwy"], jezyk)))
             if glebokosc < 16:
                 zejdz(w["id"], glebokosc + 1)

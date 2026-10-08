@@ -113,7 +113,7 @@ def opis_zlaczy(zlacza: list[dict], jezyk: str) -> str:
 def _zlacza_modelu(db: sqlite3.Connection, model_id: int) -> list[dict]:
     wiersze = db.execute("SELECT z.ilosc, z.rola, t.nazwy, t.kolejnosc FROM model_zlacze z "
                          "JOIN zlacze_typ t ON t.id = z.zlacze_typ_id WHERE z.model_id = ? "
-                         "ORDER BY t.kolejnosc", (model_id,)).fetchall()
+                         "ORDER BY t.kod IS NULL, t.kolejnosc, t.id", (model_id,)).fetchall()
     return [dict(w) for w in wiersze]
 
 

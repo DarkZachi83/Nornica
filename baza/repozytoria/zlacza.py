@@ -13,7 +13,7 @@ Zlacza = dict[tuple[int, str], int]
 
 def typy(db: sqlite3.Connection) -> list[sqlite3.Row]:
     return db.execute("SELECT id, kod, rodzaj, nazwy, kolejnosc FROM zlacze_typ "
-                      "ORDER BY kolejnosc, id").fetchall()
+                      "ORDER BY kod IS NULL, kolejnosc, id").fetchall()
 
 
 def modelu(db: sqlite3.Connection, model_id: int | None) -> Zlacza:

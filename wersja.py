@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Wersja programu."""
-WERSJA = "0.4.0"
+WERSJA = "0.4.1"
 # Posiadacz praw autorskich do kodu
 AUTOR = "Rafał Zacharski"
 ROK = "2026"

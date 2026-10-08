@@ -18,6 +18,7 @@ from tkinter import messagebox
 
 from baza.enumy import etykieta, opcje
 from baza.repozytoria import zlacza as repo
+from baza.repozytoria.slowniki import klucz_kolejnosci
 from gui.pola import PoleWyboru
 from i18n.tlumacz import nazwa, t
 
@@ -43,7 +44,7 @@ class EdytorZlaczy:
     # ---------------------------------------------------------------- opcje
     def _opcje_typow(self):
         self._typy = {w["id"]: w for w in repo.typy(self.db)}   # czytane od nowa: mogły dojść własne
-        typy = sorted(self._typy.values(), key=lambda w: (KOLEJNOSC_RODZAJOW.get(w["rodzaj"], 9), w["kolejnosc"]))
+        typy = sorted(self._typy.values(), key=lambda w: (KOLEJNOSC_RODZAJOW.get(w["rodzaj"], 9), *klucz_kolejnosci(w)))
         return [(w["id"], f"{etykieta('zlacze_typ.rodzaj', w['rodzaj'])}: {nazwa(w['nazwy'])}"
                  + ("" if w["kod"] else f"  ({t('zlacza.wlasny')})")) for w in typy]
 
@@ -125,7 +126,7 @@ class EdytorZlaczy:
         klucze = set(self.wartosci) | set(self.dziedziczone)
         klucze = [k for k in klucze if self.wartosci.get(k, 0) > 0 or k in self.dziedziczone]
         klucze.sort(key=lambda k: (k[1], KOLEJNOSC_RODZAJOW.get(self._typy[k[0]]["rodzaj"], 9),
-                                   self._typy[k[0]]["kolejnosc"]))
+                                   *klucz_kolejnosci(self._typy[k[0]])))
         for klucz in klucze:
             typ_id, rola = klucz
             wartosci = [etykieta("model_zlacze.rola", rola), nazwa(self._typy[typ_id]["nazwy"]),

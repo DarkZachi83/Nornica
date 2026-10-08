@@ -364,14 +364,24 @@ def _uzupelnij_szablony(polaczenie: sqlite3.Connection) -> None:
                                (_json(scalony), wiersz["id"]))
 
 
+# Wpis wbudowany, który już jest w bazie, zostaje — z jednym wyjątkiem: dostaje
+# kolejność z listy powyżej. Baza założona starszą wersją programu miała
+# numery z ówczesnej listy, a pozycje dopisane później (np. „Konsole do gier”)
+# dostawały numery zajęte już przez inne — kolejność zależała od historii bazy
+# i od alfabetu, a nie od listy. WHERE: bez zmian nie ma zapisu, więc drugi
+# przebieg nadal niczego nie zmienia.
+_KOLEJNOSC_Z_LISTY = ("ON CONFLICT(kod) DO UPDATE SET kolejnosc = excluded.kolejnosc "
+                      "WHERE kolejnosc IS NOT excluded.kolejnosc")
+
+
 def wypelnij(polaczenie: sqlite3.Connection) -> int:
     """Dodaje brakujące dane startowe. Zwraca liczbę dodanych wierszy."""
     przed = polaczenie.total_changes
     with transakcja(polaczenie):
         for kolejnosc, (kod, nazwy) in enumerate(STATUSY):
             polaczenie.execute(
-                "INSERT INTO status (kod, nazwy, kolejnosc) VALUES (?, ?, ?) "
-                "ON CONFLICT(kod) DO NOTHING", (kod, _json(nazwy), kolejnosc))
+                "INSERT INTO status (kod, nazwy, kolejnosc) VALUES (?, ?, ?) " + _KOLEJNOSC_Z_LISTY,
+                (kod, _json(nazwy), kolejnosc))
 
         for kod, nazwy, miejsca, historyczna in WALUTY:
             polaczenie.execute(
@@ -382,15 +392,14 @@ def wypelnij(polaczenie: sqlite3.Connection) -> int:
         for kolejnosc, (kod, rodzaj, en, pl) in enumerate(ZLACZA):
             polaczenie.execute(
                 "INSERT INTO zlacze_typ (kod, rodzaj, nazwy, kolejnosc) "
-                "VALUES (?, ?, ?, ?) ON CONFLICT(kod) DO NOTHING",
+                "VALUES (?, ?, ?, ?) " + _KOLEJNOSC_Z_LISTY,
                 (kod, rodzaj, _json(_n(en, pl)), kolejnosc))
 
         # Kategorie nadrzędne występują na liście przed podrzędnymi.
         for kolejnosc, kat in enumerate(KATEGORIE):
             polaczenie.execute(
                 "INSERT INTO kategoria (kod, rodzic_id, rodzaj, nazwy, szablon_atrybutow, kolejnosc) "
-                "VALUES (?, (SELECT id FROM kategoria WHERE kod = ?), ?, ?, ?, ?) "
-                "ON CONFLICT(kod) DO NOTHING",
+                "VALUES (?, (SELECT id FROM kategoria WHERE kod = ?), ?, ?, ?, ?) " + _KOLEJNOSC_Z_LISTY,
                 (kat["kod"], kat["rodzic"], kat["rodzaj"], _json(kat["nazwy"]),
                  _json(kat["szablon"]), kolejnosc))
 
