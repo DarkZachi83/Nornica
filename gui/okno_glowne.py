@@ -83,6 +83,7 @@ class OknoGlowne(tk.Tk):
         self.bind("<Control-p>", lambda _e: self.drukuj_etykiety())
         self.bind("<Control-e>", lambda _e: self.eksportuj())
         self.bind("<Control-t>", lambda _e: self.telefon())
+        self.bind("<Control-b>", lambda _e: self.kopia_zapasowa())
         self.bind("<F2>", lambda _e: self._fokus_skanera())
 
         self._zbuduj_ui()
@@ -203,6 +204,7 @@ class OknoGlowne(tk.Tk):
         plik.add_command(label=t("akcja.eksport"), accelerator="Ctrl+E", command=self.eksportuj)
         plik.add_command(label=t("akcja.slowniki"), command=self.slowniki)
         plik.add_command(label=t("akcja.porzadki"), command=self.porzadki)
+        plik.add_command(label=t("akcja.kopia"), accelerator="Ctrl+B", command=self.kopia_zapasowa)
         plik.add_separator()
         plik.add_command(label=t("akcja.telefon"), accelerator="Ctrl+T", command=self.telefon)
         plik.add_separator()
@@ -602,6 +604,17 @@ class OknoGlowne(tk.Tk):
                 okno.lift()
                 return okno
         okno = OknoPorzadkow(self)
+        okno.pokaz()
+        return okno
+
+    def kopia_zapasowa(self):
+        """Jedno okno kopii: ponowne wywołanie wyciąga istniejące na wierzch."""
+        from gui.okno_kopii import OknoKopii
+        for okno in self._dialogi:
+            if isinstance(okno, OknoKopii) and okno.winfo_exists():
+                okno.lift()
+                return okno
+        okno = OknoKopii(self)
         okno.pokaz()
         return okno
 

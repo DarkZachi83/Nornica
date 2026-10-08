@@ -37,6 +37,9 @@ The interface is available in English (**VOLE**) and Polish (**NORNICA**,
   locations, unused models and manufacturers, items without a place and
   repeated serial numbers; nothing is deleted without your confirmation.
 - **Export** — `.xlsx`, `.xls`, `.csv`, `.html`.
+- **Backup to a single ZIP** (File → Backup…, Ctrl+B) — the database and all
+  attached files, verified after writing; restore checks the whole backup first
+  and keeps the current database aside before replacing it.
 - **Safe data** — SQLite with atomic, checksummed schema migrations and an
   automatic backup before every upgrade.
 

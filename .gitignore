@@ -22,6 +22,9 @@ certyfikat/
 ustawienia.json
 konfiguracja.json
 
+# Kopie zapasowe kolekcji (Plik → Kopia zapasowa) — zawierają całą bazę
+*.zip
+
 # Eksporty i wydruki zrobione „przy okazji”
 *.xlsx
 *.xls

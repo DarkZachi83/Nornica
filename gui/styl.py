@@ -96,6 +96,7 @@ def ustaw(korzen: tk.Tk) -> dict[str, tkfont.Font]:
     styl.configure("Maly.TButton", padding=(4, 1))
     styl.configure("Pole.TLabel", foreground=KOLORY["przygaszony"])
     styl.configure("Akcent.TButton", foreground=KOLORY["laminat"], font=f["pogrubiona"])
+    styl.configure("Horizontal.TProgressbar", background=KOLORY["laminat"], troughcolor=KOLORY["panel"])
     f["odnosnik"] = tkfont.Font(root=korzen, family=f["zwykla"].cget("family"),
                                 size=abs(f["zwykla"].cget("size")) or 10, underline=True)
     styl.configure("Odnosnik.TLabel", foreground=KOLORY["laminat"], font=f["odnosnik"])

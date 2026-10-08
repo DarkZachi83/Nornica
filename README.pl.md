@@ -38,6 +38,9 @@ w trakcie pracy programu.
   nieużywane modele i producenci, egzemplarze bez miejsca i powtórzone numery
   seryjne; nic nie znika bez Twojego potwierdzenia.
 - **Eksport** — `.xlsx`, `.xls`, `.csv`, `.html`.
+- **Kopia zapasowa w jednym pliku ZIP** (Plik → Kopia zapasowa…, Ctrl+B) —
+  baza i wszystkie podpięte pliki, sprawdzane po zapisie; przywracanie najpierw
+  sprawdza całą kopię i odkłada obecną bazę na bok, zanim ją zastąpi.
 - **Bezpieczne dane** — SQLite, atomowe migracje schematu z sumami
   kontrolnymi i automatyczną kopią zapasową przed każdą aktualizacją.
 
