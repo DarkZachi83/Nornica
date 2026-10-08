@@ -1,0 +1,10 @@
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.pdf binary
+# Migracje: sumy kontrolne SHA-256 są zapisane w bazach użytkowników —
+# git nie może zmieniać końców linii w tych plikach.
+baza/schemat/** -text

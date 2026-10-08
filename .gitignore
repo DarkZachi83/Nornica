@@ -1,0 +1,51 @@
+# --- Dane użytkownika: NIGDY do repozytorium -------------------------------
+# Program trzyma bazę poza folderem kodu (~/.local/share/nornica,
+# %APPDATA%\Nornica), ale na wypadek uruchomienia z --baza / NORNICA_DANE
+# wskazującym tutaj — blokujemy wszystko, co mogłoby zawierać dane kolekcji.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite-*
+kopie/
+pliki/
+zdjecia/
+eksport/
+certyfikat/
+*.key
+*.pem
+*.crt
+*.p12
+*.log
+ustawienia.json
+konfiguracja.json
+
+# Eksporty i wydruki zrobione „przy okazji”
+*.xlsx
+*.xls
+*.csv
+/*.pdf
+
+# --- Python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Edytory / system -------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
