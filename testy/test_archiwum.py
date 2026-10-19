@@ -170,6 +170,26 @@ class TestArchiwum(unittest.TestCase):
             self.assertFalse(archiwum._bezpieczna(sciezka), sciezka)
         self.assertTrue(archiwum._bezpieczna("3f/3fa9.jpg"))
 
+    def test_sciezka_pliku_w_bazie_kopii_poza_magazynem_odrzucona(self):
+        # cudza kopia z „zasobem” wskazującym np. klucz SSH — „Usuń sieroty” skasowałoby go
+        self.db.execute("UPDATE zasob SET plik_sciezka = '../../poza.txt' WHERE id = ?", (self.bios,))
+        self.db.commit()
+        cel, manifest = self.kopia()                                     # kopia powstaje, plik jako brakujący
+        self.assertIn("../../poza.txt", manifest["brakujace_pliki"])
+        nowa = self.nowa_baza("nowy_dysk")
+        with self.assertRaises(BladNornicy):
+            archiwum.przywroc(nowa, cel, self.tmp / "kopie")
+        self.assertEqual(0, nowa.execute("SELECT COUNT(*) FROM egzemplarz").fetchone()[0])
+
+    def test_brak_miejsca_na_dysku_nic_nie_zmienia(self):
+        cel, _ = self.kopia()
+        nowa = self.nowa_baza("nowy_dysk")
+        with mock.patch("uslugi.archiwum.shutil.disk_usage", return_value=mock.Mock(free=1024)):
+            with self.assertRaises(BladNornicy) as blad:
+                archiwum.przywroc(nowa, cel, self.tmp / "kopie")
+        self.assertEqual("blad.kopia_brak_miejsca", blad.exception.klucz)
+        self.assertEqual(0, nowa.execute("SELECT COUNT(*) FROM egzemplarz").fetchone()[0])
+
     def test_zly_plik_w_kopii_nie_trafia_do_magazynu(self):
         cel, manifest = self.kopia()
         nazwa = next(n for n in manifest["sumy_sha256"] if n.endswith(".bin"))

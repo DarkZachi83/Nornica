@@ -88,6 +88,40 @@ class TestCertyfikatow(unittest.TestCase):
         self.assertEqual(ca_przed, drugie["ca"].read_bytes())   # telefon nie musi instalować ponownie
 
 
+class TestOgraniczenUrzedu(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+
+    def test_urzad_tylko_dla_sieci_domowych(self):
+        import ipaddress
+        from cryptography import x509
+        pliki = certyfikaty.przygotuj(self.tmp, ["192.168.1.10", "203.0.113.7"])
+        ca = x509.load_pem_x509_certificate(pliki["ca"].read_bytes())
+        ograniczenia = ca.extensions.get_extension_for_class(x509.NameConstraints)
+        self.assertTrue(ograniczenia.critical)
+        sieci = [n.value for n in ograniczenia.value.permitted_subtrees if isinstance(n, x509.IPAddress)]
+        self.assertIn(ipaddress.ip_network("192.168.0.0/16"), sieci)
+        self.assertIn(ipaddress.ip_network("203.0.113.7/32"), sieci)    # adres komputera spoza sieci domowych
+        self.assertNotIn(ipaddress.ip_network("0.0.0.0/0"), sieci)
+        if not sys.platform.startswith("win"):
+            self.assertEqual(0o600, os.stat(self.tmp / "ca.key").st_mode & 0o777)
+        # nowy adres spoza ograniczeń nie trafia do certyfikatu serwera — byłby odrzucony w całości
+        drugie = certyfikaty.przygotuj(self.tmp, ["192.168.1.10", "198.51.100.1"])
+        serwer = x509.load_pem_x509_certificate(drugie["cert"].read_bytes())
+        san = serwer.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+        self.assertNotIn("198.51.100.1", {str(a) for a in san.get_values_for_type(x509.IPAddress)})
+
+    def test_klucz_bez_szerszych_praw_po_nadpisaniu(self):
+        if sys.platform.startswith("win"):
+            self.skipTest("prawa POSIX")
+        plik = self.tmp / "serwer.key"
+        plik.write_bytes(b"stary")
+        os.chmod(plik, 0o644)
+        certyfikaty._zapisz_prywatny(plik, b"nowy")
+        self.assertEqual((b"nowy", 0o600), (plik.read_bytes(), os.stat(plik).st_mode & 0o777))
+
+
 class TestSerwera(Kolekcja):
     """Telefon symulowany w osobnym wątku; most obsługiwany w wątku głównym — jak w programie."""
 

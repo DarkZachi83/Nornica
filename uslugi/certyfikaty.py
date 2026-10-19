@@ -14,7 +14,10 @@ Wymagania Apple dla certyfikatów TLS (inaczej iOS odrzuci certyfikat nawet po
 zaufaniu urzędowi): klucz RSA ≥ 2048 bitów, SHA-256, ważność certyfikatu
 serwera ≤ 825 dni, rozszerzenia SubjectAltName i ExtendedKeyUsage=serverAuth.
 
-Klucz prywatny urzędu nie opuszcza komputera; pliki mają prawa 0600.
+Klucz prywatny urzędu nie opuszcza komputera; pliki mają prawa 0600 od chwili
+utworzenia. Urząd ma ograniczenie nazw (NameConstraints): może podpisywać tylko
+certyfikaty dla adresów sieci domowych i „localhost” — telefon, który mu ufa,
+nie uzna podpisanego nim certyfikatu np. banku, nawet gdyby klucz urzędu wyciekł.
 Certyfikat serwera jest odnawiany, gdy zmieni się adres komputera w sieci
 albo zbliża się koniec ważności — urząd zostaje ten sam, więc telefon nie
 wymaga ponownej instalacji.
@@ -31,6 +34,9 @@ from wyjatki import BladNornicy
 WAZNOSC_URZEDU_DNI = 3650
 WAZNOSC_SERWERA_DNI = 820            # < 825 dni (limit Apple)
 ODNOW_PRZED_KONCEM_DNI = 30
+# sieci, dla których urząd może podpisywać certyfikaty (domowe, CGNAT/VPN, link-local, ta maszyna)
+SIECI_URZEDU = ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10",
+                "169.254.0.0/16", "127.0.0.0/8")
 
 
 def dostepne() -> bool:
@@ -53,14 +59,40 @@ def poczatek_waznosci(cert) -> dt.datetime:
 
 
 def _zapisz_prywatny(sciezka: Path, dane: bytes) -> None:
-    sciezka.write_bytes(dane)
-    try:
+    """Plik powstaje od razu z prawami 0600 — bez chwili, w której inni mogą go odczytać."""
+    deskryptor = os.open(sciezka, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_BINARY", 0), 0o600)
+    with os.fdopen(deskryptor, "wb") as plik:
+        plik.write(dane)
+    try:                              # plik istniał wcześniej z szerszymi prawami
         os.chmod(sciezka, 0o600)
     except OSError:
         pass                          # Windows: prawa dostępu działają inaczej
 
 
-def _urzad(katalog: Path):
+def _sieci_urzedu(adresy: list[str]) -> list[ipaddress.IPv4Network]:
+    """Sieci domowe plus pojedyncze adresy komputera spoza nich (np. publiczny adres
+    na łączu bez routera) — urząd powstaje raz, z adresami z chwili utworzenia."""
+    sieci = [ipaddress.ip_network(s) for s in SIECI_URZEDU]
+    for adres in adresy:
+        ip = ipaddress.ip_address(adres)
+        if not any(ip in siec for siec in sieci):
+            sieci.append(ipaddress.ip_network(f"{ip}/32"))
+    return sieci
+
+
+def _dozwolone_adresy(cert_urzedu, adresy: list[str]) -> list[str]:
+    """Adresy, które urząd może umieścić w certyfikacie. Urząd utworzony przed
+    wprowadzeniem ograniczeń (bez NameConstraints) obejmuje wszystkie."""
+    from cryptography import x509
+    try:
+        ograniczenia = cert_urzedu.extensions.get_extension_for_class(x509.NameConstraints).value
+    except x509.ExtensionNotFound:
+        return adresy
+    sieci = [n.value for n in ograniczenia.permitted_subtrees or [] if isinstance(n, x509.IPAddress)]
+    return [a for a in adresy if any(ipaddress.ip_address(a) in siec for siec in sieci)]
+
+
+def _urzad(katalog: Path, adresy: list[str]):
     from cryptography import x509
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import rsa
@@ -84,6 +116,10 @@ def _urzad(katalog: Path):
                                          content_commitment=False, key_encipherment=False,
                                          data_encipherment=False, key_agreement=False,
                                          encipher_only=False, decipher_only=False), critical=True)
+            .add_extension(x509.NameConstraints(
+                permitted_subtrees=[x509.DNSName("localhost")]
+                + [x509.IPAddress(siec) for siec in _sieci_urzedu(adresy)],
+                excluded_subtrees=None), critical=True)
             .add_extension(x509.SubjectKeyIdentifier.from_public_key(klucz.public_key()), critical=False)
             .sign(klucz, hashes.SHA256()))
     katalog.mkdir(parents=True, exist_ok=True)
@@ -121,9 +157,10 @@ def przygotuj(katalog: Path, adresy: list[str]) -> dict[str, Path]:
     from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
     katalog = Path(katalog)
-    cert_urzedu, klucz_urzedu = _urzad(katalog)
-    plik_cert, plik_klucz = katalog / "serwer.crt", katalog / "serwer.key"
     adresy = sorted({*adresy, "127.0.0.1"})
+    cert_urzedu, klucz_urzedu = _urzad(katalog, adresy)
+    adresy = _dozwolone_adresy(cert_urzedu, adresy)
+    plik_cert, plik_klucz = katalog / "serwer.crt", katalog / "serwer.key"
     if _wymaga_odnowienia(plik_cert, adresy) or not plik_klucz.exists():
         klucz = rsa.generate_private_key(public_exponent=65537, key_size=2048)
         teraz = dt.datetime.now(dt.timezone.utc)

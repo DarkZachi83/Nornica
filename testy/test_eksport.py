@@ -108,6 +108,20 @@ class TestFormatow(Eksport):
         self.assertEqual("#,##0.00", komorka.number_format)
         self.assertEqual("A2", arkusz.freeze_panes)
 
+    def test_tekst_jak_formula_zostaje_tekstem(self):
+        from openpyxl import load_workbook
+        self.db.execute("UPDATE egzemplarz SET uwagi = '=HYPERLINK(\"http://x\",\"klik\")' WHERE id = ?",
+                        (self.atari,))
+        self.db.commit()
+        (xlsx,) = self.eksportuj(["xlsx"], prywatne=True, tabele=("egzemplarze",))
+        komorki = [c for r in load_workbook(xlsx)["Egzemplarze"].iter_rows() for c in r
+                   if isinstance(c.value, str) and c.value.startswith("=HYPERLINK")]
+        self.assertEqual(["s"], [c.data_type for c in komorki])
+        (csv_plik,) = self.eksportuj(["csv"], prywatne=True, tabele=("egzemplarze",))
+        with open(csv_plik, encoding="utf-8-sig", newline="") as plik:
+            pola = [p for w in csv.reader(plik, delimiter=";") for p in w if "HYPERLINK" in p]
+        self.assertEqual(['\'=HYPERLINK("http://x","klik")'], pola)
+
     def test_xls(self):
         import xlrd
         (plik,) = self.eksportuj(["xls"], prywatne=True)
