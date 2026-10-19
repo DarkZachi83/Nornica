@@ -162,6 +162,24 @@ class TestWidokuLokalizacji(BazaTestowa):
         self.assertEqual((pc, None), tuple(wiersz))
 
 
+    def test_efektywna_lokalizacja_zgodna_z_widokiem(self):
+        # funkcja liczy od jednego egzemplarza w górę — wynik musi być ten sam co w widoku
+        from baza.repozytoria import egzemplarze
+        a, b = self.lokalizacja("Regał A"), self.lokalizacja("Pudełko B")
+        pc = self.egzemplarz(lokalizacja_id=a)
+        plyta = self.egzemplarz(rodzic_id=pc)
+        procesor = self.egzemplarz(rodzic_id=plyta)
+        luzem = self.egzemplarz(lokalizacja_id=b)
+        bez_miejsca = self.egzemplarz()
+        karta = self.egzemplarz(rodzic_id=bez_miejsca)
+        widok = egzemplarze.efektywne_lokalizacje(self.db)
+        for egz in (pc, plyta, procesor, luzem, bez_miejsca, karta):
+            self.assertEqual(widok.get(egz), egzemplarze.efektywna_lokalizacja(self.db, egz), egz)
+        self.assertEqual((a, b, None), (egzemplarze.efektywna_lokalizacja(self.db, procesor),
+                                        egzemplarze.efektywna_lokalizacja(self.db, luzem),
+                                        egzemplarze.efektywna_lokalizacja(self.db, karta)))
+        self.assertIsNone(egzemplarze.efektywna_lokalizacja(self.db, 999_999))
+
 class TestKodow(BazaTestowa):
     def test_kolejne_kody(self):
         with transakcja(self.db):
