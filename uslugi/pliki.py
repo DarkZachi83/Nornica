@@ -26,6 +26,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import konfiguracja
 from baza.polaczenie import transakcja
@@ -37,6 +38,16 @@ _log = logging.getLogger(__name__)
 ROZSZERZENIA_ZDJEC = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tif", ".tiff", ".heic", ".heif"}
 ROZMIAR_MINIATURY = 160
 CELE = ("kategoria_id", "model_id", "egzemplarz_id")
+SCHEMATY_ADRESOW = ("http", "https")
+# Takich plików program nie uruchamia — pokazuje je w folderze. Sterownik czy
+# instalator z kolekcji użytkownik uruchomi sam; plik z cudzej kopii nie
+# wykona się po jednym kliknięciu w miniaturę.
+ROZSZERZENIA_WYKONYWALNE = {
+    ".exe", ".com", ".bat", ".cmd", ".scr", ".pif", ".msi", ".msp", ".lnk", ".url", ".appref-ms",
+    ".ps1", ".psm1", ".vbs", ".vbe", ".js", ".jse", ".wsf", ".wsh", ".hta", ".cpl", ".jar",
+    ".reg", ".inf", ".application", ".gadget", ".desktop", ".sh", ".bash", ".command", ".run",
+    ".appimage", ".app", ".py", ".pyw", ".pl", ".rb",
+}
 
 
 def katalog_plikow(db: sqlite3.Connection) -> Path:
@@ -50,7 +61,13 @@ def katalog_plikow(db: sqlite3.Connection) -> Path:
 
 
 def sciezka_pliku(db: sqlite3.Connection, wzgledna: str) -> Path:
-    return katalog_plikow(db) / wzgledna
+    """Pełna ścieżka pliku z magazynu. Ścieżka z bazy (np. z cudzej kopii
+    zapasowej) nie może wskazywać pliku poza folderem plików."""
+    katalog = katalog_plikow(db)
+    sciezka = katalog / wzgledna
+    if not sciezka.resolve().is_relative_to(katalog.resolve()):
+        raise BladNornicy("blad.plik_poza_magazynem", sciezka=str(wzgledna))
+    return sciezka
 
 
 def suma_pliku(sciezka: Path) -> tuple[str, int]:
@@ -235,7 +252,7 @@ def usun_sieroty_z_plikami(db: sqlite3.Connection, identyfikatory: list[int]) ->
         try:
             sciezka_pliku(db, wzgledna).unlink(missing_ok=True)
             usuniete += 1
-        except OSError as blad:
+        except (OSError, BladNornicy) as blad:
             _log.warning("Nie udało się usunąć %s: %s", wzgledna, blad)
     return usuniete
 
@@ -254,14 +271,26 @@ def otworz(cel: str | Path) -> None:
         subprocess.Popen(["xdg-open", cel], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def otworz_adres(adres: str) -> None:
+    """Odnośnik zapisany w bazie otwiera się tylko jako strona WWW — nie jako
+    file://, ścieżka do programu ani inny schemat. Adres bez schematu
+    („www.vogons.org/…”) dostaje https://."""
+    adres = adres.strip()
+    if not urlsplit(adres).scheme:
+        adres = "https://" + adres
+    if urlsplit(adres).scheme.lower() not in SCHEMATY_ADRESOW:
+        raise BladNornicy("blad.adres_niedozwolony", adres=adres)
+    otworz(adres)
+
+
 def otworz_zasob(db: sqlite3.Connection, zasob: sqlite3.Row) -> None:
     if zasob["plik_sciezka"]:
         sciezka = sciezka_pliku(db, zasob["plik_sciezka"])
         if not sciezka.exists():
             raise BladNornicy("blad.brak_pliku", sciezka=str(sciezka))
-        otworz(sciezka)
+        otworz(sciezka.parent if sciezka.suffix.lower() in ROZSZERZENIA_WYKONYWALNE else sciezka)
     elif zasob["url"]:
-        otworz(zasob["url"])
+        otworz_adres(zasob["url"])
 
 
 # ---------------------------------------------------------------------------

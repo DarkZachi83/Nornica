@@ -32,6 +32,7 @@ from pathlib import Path
 from baza.polaczenie import transakcja
 from baza.repozytoria import zasoby
 from uslugi import pliki
+from wyjatki import BladNornicy
 
 _log = logging.getLogger(__name__)
 
@@ -204,7 +205,7 @@ def _usun_pliki(db: sqlite3.Connection, wzgledne: list[str]) -> int:
         try:
             pliki.sciezka_pliku(db, wzgledna).unlink(missing_ok=True)
             usuniete += 1
-        except OSError as blad:
+        except (OSError, BladNornicy) as blad:
             _log.warning("Nie udało się usunąć %s: %s", wzgledna, blad)
     return usuniete
 

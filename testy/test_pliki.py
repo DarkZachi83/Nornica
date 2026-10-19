@@ -103,6 +103,31 @@ class TestPlikow(Kolekcja):
         with self.assertRaises(BladNornicy):
             pliki.dodaj_zasob(self.db, {"typ": "notatka", "tytul": " "}, {"egzemplarz_id": self.pc})
 
+    def test_sciezka_poza_magazynem_odrzucona(self):
+        for zla in ("../poza.txt", "aa/../../poza.txt", str(self.tmp / "poza.txt")):
+            with self.assertRaises(BladNornicy, msg=zla):
+                pliki.sciezka_pliku(self.db, zla)
+        self.assertTrue(str(pliki.sciezka_pliku(self.db, "3f/3fa9.jpg")).endswith("3fa9.jpg"))
+
+    def test_odnosnik_tylko_jako_strona_www(self):
+        with mock.patch("uslugi.pliki.otworz") as otworz:
+            pliki.otworz_adres("https://theretroweb.com/x")
+            pliki.otworz_adres("www.vogons.org/viewtopic.php")
+            for zly in ("file:///etc/passwd", "javascript:alert(1)", "C:\\Windows\\calc.exe", "smb://x/y"):
+                with self.assertRaises(BladNornicy, msg=zly):
+                    pliki.otworz_adres(zly)
+        self.assertEqual(["https://theretroweb.com/x", "https://www.vogons.org/viewtopic.php"],
+                         [w.args[0] for w in otworz.call_args_list])
+
+    def test_plik_wykonywalny_pokazany_w_folderze(self):
+        (self.tmp / "setup.EXE").write_bytes(b"MZ" + os.urandom(64))
+        z = pliki.dodaj_plik(self.db, self.tmp / "setup.EXE", {"egzemplarz_id": self.pc}, typ="sterownik")
+        zasob = self.db.execute("SELECT * FROM zasob WHERE id = ?", (z,)).fetchone()
+        with mock.patch("uslugi.pliki.otworz") as otworz:
+            pliki.otworz_zasob(self.db, zasob)
+        sciezka = pliki.sciezka_pliku(self.db, zasob["plik_sciezka"])
+        otworz.assert_called_once_with(sciezka.parent)                  # folder, nie uruchomienie programu
+
     def test_brak_pliku(self):
         with self.assertRaises(BladNornicy) as k:
             pliki.dodaj_plik(self.db, self.tmp / "nie_ma.jpg", {"egzemplarz_id": self.pc})

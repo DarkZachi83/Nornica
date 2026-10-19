@@ -15,6 +15,9 @@ from pathlib import Path
 from raporty.dane import KWOTA, Tabela
 
 SEPARATOR = {"pl": ";", "en": ","}
+# Tekst zaczynający się od tych znaków Excel i LibreOffice biorą za formułę
+# (np. „=HYPERLINK(…)” w nazwie z importu) — poprzedzamy go apostrofem.
+POCZATKI_FORMULY = ("=", "+", "-", "@", "\t", "\r")
 DZIESIETNY = {"pl": ",", "en": "."}
 
 
@@ -25,6 +28,8 @@ def _wartosc(wartosc, typ: str, jezyk: str) -> str:
         return f"{wartosc:.2f}".replace(".", DZIESIETNY.get(jezyk, "."))
     if isinstance(wartosc, float):
         return f"{wartosc:g}".replace(".", DZIESIETNY.get(jezyk, "."))
+    if isinstance(wartosc, str) and wartosc.startswith(POCZATKI_FORMULY):
+        return "'" + wartosc
     return str(wartosc)
 
 

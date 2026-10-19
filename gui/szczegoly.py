@@ -504,7 +504,7 @@ class PanelSzczegolow:
 
     def _otworz_adres(self, adres: str) -> None:
         try:
-            pliki.otworz(adres)
+            pliki.otworz_adres(adres)
         except Exception as blad:   # noqa: BLE001
             pokaz_blad(self.glowne, blad)
 

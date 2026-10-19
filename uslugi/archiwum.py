@@ -107,8 +107,8 @@ def migawka(db: sqlite3.Connection) -> Migawka:
         wynik = Migawka(katalog, sciezka, biezaca_wersja(db), _liczby(db))
         for (wzgledna,) in db.execute("SELECT DISTINCT plik_sciezka FROM zasob "
                                       "WHERE plik_sciezka IS NOT NULL ORDER BY plik_sciezka"):
-            pelna = pliki.sciezka_pliku(db, wzgledna)
-            if _bezpieczna(wzgledna) and pelna.is_file():
+            pelna = pliki.sciezka_pliku(db, wzgledna) if _bezpieczna(wzgledna) else None
+            if pelna is not None and pelna.is_file():
                 wynik.pliki.append((wzgledna, pelna, pelna.stat().st_size))
             else:
                 wynik.brakujace.append(wzgledna)
@@ -230,7 +230,12 @@ def sprawdz(sciezka: str | Path, katalog_roboczy: Path) -> tuple[dict, Path]:
         raise BladNornicy("blad.kopia_nieprawidlowa", plik=str(sciezka))
     with zipfile.ZipFile(sciezka) as archiwum:
         nazwy = set(archiwum.namelist())
-        if not set(sumy) <= nazwy or archiwum.testzip() is not None:
+        if not set(sumy) <= nazwy:
+            raise BladNornicy("blad.kopia_uszkodzona", plik=str(sciezka))
+        # Rozmiar po rozpakowaniu sprawdzamy, zanim cokolwiek rozpakujemy: zipfile nie
+        # odda więcej, niż deklaruje nagłówek, więc „bomba” nie zapcha dysku.
+        _sprawdz_miejsce(archiwum.getinfo(PLIK_BAZY).file_size, katalog_roboczy)
+        if archiwum.testzip() is not None:
             raise BladNornicy("blad.kopia_uszkodzona", plik=str(sciezka))
         baza = katalog_roboczy / PLIK_BAZY
         with archiwum.open(PLIK_BAZY) as wejscie, open(baza, "wb") as wyjscie:
@@ -243,6 +248,10 @@ def sprawdz(sciezka: str | Path, katalog_roboczy: Path) -> tuple[dict, Path]:
         raise BladNornicy("blad.kopia_uszkodzona", plik=str(sciezka)) from None
     try:
         wynik = polaczenie.execute("PRAGMA integrity_check").fetchone()[0]
+        # ścieżki plików z cudzej bazy nie mogą wskazywać poza magazyn (np. „../../.ssh/id_rsa”)
+        if wynik == "ok" and any(not _bezpieczna(w) for (w,) in polaczenie.execute(
+                "SELECT plik_sciezka FROM zasob WHERE plik_sciezka IS NOT NULL")):
+            wynik = "ścieżka poza magazynem"
     except sqlite3.DatabaseError:
         wynik = "błąd"
     finally:
@@ -255,6 +264,15 @@ def sprawdz(sciezka: str | Path, katalog_roboczy: Path) -> tuple[dict, Path]:
 # ---------------------------------------------------------------------------
 # Przywracanie
 # ---------------------------------------------------------------------------
+def _sprawdz_miejsce(potrzeba: int, katalog: Path) -> None:
+    """Zapas 5% i 50 MB — żeby przywracanie nie zapełniło dysku do zera."""
+    while not katalog.exists():      # folder plików może jeszcze nie istnieć
+        katalog = katalog.parent
+    wolne = shutil.disk_usage(katalog).free
+    if potrzeba + max(potrzeba // 20, 50 << 20) > wolne:
+        raise BladNornicy("blad.kopia_brak_miejsca", potrzeba=potrzeba >> 20, wolne=wolne >> 20)
+
+
 def _rozpakuj_pliki(db: sqlite3.Connection, sciezka: str | Path, sumy: dict) -> int:
     """Dokłada pliki z kopii, których brakuje w magazynie. Każdy trafia na
     dysk pod nazwą tymczasową i dostaje właściwą dopiero po zgodności sumy."""
@@ -262,12 +280,10 @@ def _rozpakuj_pliki(db: sqlite3.Connection, sciezka: str | Path, sumy: dict) -> 
     dodane = 0
     przedrostek = KATALOG_PLIKOW + "/"
     with zipfile.ZipFile(sciezka) as archiwum:
-        for nazwa, suma in sumy.items():
-            if not nazwa.startswith(przedrostek):
-                continue
-            cel = katalog / nazwa[len(przedrostek):]
-            if cel.is_file():
-                continue
+        brakujace = [(nazwa, suma, katalog / nazwa[len(przedrostek):]) for nazwa, suma in sumy.items()
+                     if nazwa.startswith(przedrostek) and not (katalog / nazwa[len(przedrostek):]).is_file()]
+        _sprawdz_miejsce(sum(archiwum.getinfo(nazwa).file_size for nazwa, _, _ in brakujace), katalog)
+        for nazwa, suma, cel in brakujace:
             cel.parent.mkdir(parents=True, exist_ok=True)
             deskryptor, tymczasowy = tempfile.mkstemp(dir=cel.parent, prefix=".kopia-")
             os.close(deskryptor)

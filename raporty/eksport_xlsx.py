@@ -37,6 +37,9 @@ def zapisz(tabele: list[Tabela], sciezka: Path) -> Path:
             komorka.alignment = Alignment(vertical="center")
         for wiersz in tabela.wiersze:
             arkusz.append([float(w) if isinstance(w, Decimal) else w for w in wiersz])
+            for komorka in arkusz[arkusz.max_row]:
+                if komorka.data_type == "f":    # tekst „=…” to dane, nie formuła do wykonania
+                    komorka.data_type = "s"
         for i, kolumna in enumerate(tabela.kolumny, 1):
             litera = get_column_letter(i)
             arkusz.column_dimensions[litera].width = kolumna.szerokosc + 2
