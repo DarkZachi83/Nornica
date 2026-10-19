@@ -161,7 +161,6 @@ class TestWidokuLokalizacji(BazaTestowa):
                                  "WHERE egzemplarz_id = ?", (karta,)).fetchone()
         self.assertEqual((pc, None), tuple(wiersz))
 
-
     def test_efektywna_lokalizacja_zgodna_z_widokiem(self):
         # funkcja liczy od jednego egzemplarza w górę — wynik musi być ten sam co w widoku
         from baza.repozytoria import egzemplarze
@@ -179,6 +178,7 @@ class TestWidokuLokalizacji(BazaTestowa):
                                         egzemplarze.efektywna_lokalizacja(self.db, luzem),
                                         egzemplarze.efektywna_lokalizacja(self.db, karta)))
         self.assertIsNone(egzemplarze.efektywna_lokalizacja(self.db, 999_999))
+
 
 class TestKodow(BazaTestowa):
     def test_kolejne_kody(self):

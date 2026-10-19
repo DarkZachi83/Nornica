@@ -284,4 +284,3 @@ def obsluga_telefonu(db: sqlite3.Connection, dane: dict, jezyk: str | None = Non
         anuluj(db, sesja_id)
         return {"anulowano": True}
     raise BladNornicy("blad.inwentaryzacja_brak")
-

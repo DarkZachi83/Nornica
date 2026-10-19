@@ -27,6 +27,11 @@ The interface is available in English (**VOLE**) and Polish (**NORNICA**,
 - **Phone as a scanner** — the program starts a local HTTPS server and shows a
   QR code; the phone opens a web page (no app to install), scans labels with the
   live camera and can add photos to an item. Works on Android and iPhone.
+  Since version 0.6.1 the phone certificate authority is limited to home
+  networks (it cannot vouch for any other site, even if its key leaked).
+  An authority created by an older version keeps working; to switch to the
+  limited one, delete the `certyfikat` folder in the data folder and install
+  `ca.crt` on the phone again.
 - **Stocktake with the phone** — scan a rack's label, tap "Start stocktake here"
   and scan everything that is really there; the program compares it with the
   database (sub-locations included) and reports what is in place, what was found

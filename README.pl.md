@@ -28,6 +28,11 @@ w trakcie pracy programu.
 - **Telefon jako skaner** — program uruchamia lokalny serwer HTTPS i pokazuje
   kod QR; telefon otwiera stronę w przeglądarce (bez instalowania aplikacji),
   skanuje etykiety kamerą na żywo i dodaje zdjęcia. Android i iPhone.
+  Od wersji 0.6.1 urząd certyfikacji dla telefonu jest ograniczony do sieci
+  domowych (nie poświadczy żadnej innej strony, nawet gdyby jego klucz wyciekł).
+  Urząd utworzony starszą wersją działa dalej; żeby przejść na ograniczony,
+  usuń folder `certyfikat` z folderu danych i zainstaluj `ca.crt` na telefonie
+  jeszcze raz.
 - **Inwentaryzacja telefonem** — zeskanuj etykietę regału, dotknij „Rozpocznij
   inwentaryzację” i skanuj wszystko, co tam naprawdę jest; program porównuje to
   z bazą (razem z podlokalizacjami) i pokazuje, co jest na miejscu, co znalazło

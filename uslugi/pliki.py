@@ -70,6 +70,17 @@ def sciezka_pliku(db: sqlite3.Connection, wzgledna: str) -> Path:
     return sciezka
 
 
+def plik_istnieje(db: sqlite3.Connection, wzgledna: str) -> bool:
+    """Czy plik z magazynu jest na dysku. Ścieżka spoza magazynu (np. z kopii
+    przywróconej przed wprowadzeniem tej ochrony) liczy się jak brakujący plik:
+    karta egzemplarza pokazuje „brak pliku”, a w „Porządkach” wpis da się usunąć,
+    zamiast błędu przy każdym wyświetleniu."""
+    try:
+        return sciezka_pliku(db, wzgledna).is_file()
+    except BladNornicy:
+        return False
+
+
 def suma_pliku(sciezka: Path) -> tuple[str, int]:
     skrot = hashlib.sha256()
     rozmiar = 0
@@ -347,7 +358,7 @@ def _podglad_z_pliku(sciezka: str, zmiana: float, szerokosc: int, wysokosc: int)
 def podglad(db: sqlite3.Connection, zasob: sqlite3.Row, szerokosc: int, wysokosc: int) -> bytes | None:
     """PNG o wymiarach mieszczących się w ramce. Bez Pillow lub bez pliku —
     miniatura z bazy (mniejsza, ale lepsza niż nic)."""
-    if zasob["plik_sciezka"]:
+    if zasob["plik_sciezka"] and plik_istnieje(db, zasob["plik_sciezka"]):
         sciezka = sciezka_pliku(db, zasob["plik_sciezka"])
         if sciezka.exists():
             dane = _podglad_z_pliku(str(sciezka), sciezka.stat().st_mtime, szerokosc, wysokosc)

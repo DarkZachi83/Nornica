@@ -219,3 +219,33 @@ class TestOknaPorzadkow(test_gui.TestPrzebudowy):
         okno.update()
         okno.pokaz_pozycje()
         self.assertEqual((f"E{luzem}",), self.drzewo().selection())
+
+
+class TestSciezkiPozaMagazynem(unittest.TestCase):
+    """Baza z wpisem wskazującym poza folder plików (np. kopia przywrócona przed
+    wprowadzeniem ochrony): „Porządki” i podgląd działają, wpis da się usunąć."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        straznik = mock.patch.dict(os.environ, {"NORNICA_DANE": str(self.tmp / "dane")})
+        straznik.start()
+        self.addCleanup(straznik.stop)
+        self.db = otworz_baze(":memory:")
+        self.addCleanup(self.db.close)
+        migruj(self.db)
+        dane_startowe.wypelnij(self.db)
+        (self.tmp / "poza.txt").write_bytes(b"nie ruszac")
+        self.zasob = self.db.execute("INSERT INTO zasob (typ, tytul, plik_sciezka) "
+                                     "VALUES ('bios', 'x', '../../poza.txt')").lastrowid
+
+    def test_porzadki_pokazuja_i_usuwaja_wpis_bez_ruszania_pliku(self):
+        wyniki = porzadki.przeglad(self.db)                              # nie rzuca wyjątku
+        self.assertEqual([self.zasob], [p["id"] for p in wyniki["brakujace_pliki"]])
+        self.assertEqual(1, porzadki.usun(self.db, "brakujace_pliki", [self.zasob]))
+        self.assertTrue((self.tmp / "poza.txt").exists())
+
+    def test_podglad_bez_bledu(self):
+        zasob = self.db.execute("SELECT * FROM zasob WHERE id = ?", (self.zasob,)).fetchone()
+        self.assertFalse(pliki.plik_istnieje(self.db, zasob["plik_sciezka"]))
+        self.assertIsNone(pliki.podglad(self.db, zasob, 100, 100))

@@ -653,7 +653,7 @@ class PanelSzczegolow:
             podglad.pack()
             podpis = z["tytul"] if len(z["tytul"]) <= 14 else z["tytul"][:13] + "…"
             ttk.Label(komorka, text=podpis, style="Opis.TLabel").pack()
-            if z["plik_sciezka"] and not pliki.sciezka_pliku(self.db, z["plik_sciezka"]).exists():
+            if z["plik_sciezka"] and not pliki.plik_istnieje(self.db, z["plik_sciezka"]):
                 # plik usunięty z dysku poza programem — miniatura w bazie została
                 ttk.Label(komorka, text=t("zasoby.brak_pliku"), style="Ostrzezenie.TLabel").pack()
             zaznaczone = tk.IntVar(master=self.glowne, value=int(z["id"] == glowne_id))

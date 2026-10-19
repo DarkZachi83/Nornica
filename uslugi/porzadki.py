@@ -106,7 +106,7 @@ def brakujace_pliki(db: sqlite3.Connection) -> list[dict]:
             "         ORDER BY p.egzemplarz_id LIMIT 1) AS egzemplarz_id, "
             "       (SELECT COUNT(*) FROM zasob_powiazanie p WHERE p.zasob_id = z.id) AS powiazan "
             "FROM zasob z WHERE z.plik_sciezka IS NOT NULL ORDER BY z.dodano"):
-        if not pliki.sciezka_pliku(db, w["plik_sciezka"]).is_file():
+        if not pliki.plik_istnieje(db, w["plik_sciezka"]):
             wynik.append(dict(w))
     return wynik
 
