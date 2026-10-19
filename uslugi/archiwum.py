@@ -320,13 +320,15 @@ def przywroc(db: sqlite3.Connection, sciezka: str | Path, katalog_kopii: Path) -
         finally:
             cel.close()
         dodane = _rozpakuj_pliki(db, sciezka, manifest["sumy_sha256"])
-        zrodlo = sqlite3.connect(baza)
+        zrodlo = otworz_baze(baza)
         try:
+            # kopia ze starszej wersji programu: migracja na rozpakowanej bazie, ZANIM
+            # zastąpi obecną — nieudana migracja (np. blad.migracja_zmieniona) nic nie zmienia
+            migruj(zrodlo)
+            dane_startowe.wypelnij(zrodlo)
             zrodlo.backup(db)            # jeden krok: całość albo nic
         finally:
             zrodlo.close()
-        migruj(db, katalog_kopii)        # kopia ze starszej wersji programu
-        dane_startowe.wypelnij(db)
         return {"manifest": manifest, "dodane_pliki": dodane, "kopia_bezpieczenstwa": bezpieczenstwo}
     finally:
         shutil.rmtree(roboczy, ignore_errors=True)
