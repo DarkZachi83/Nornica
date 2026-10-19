@@ -114,6 +114,14 @@ class TestArchiwum(unittest.TestCase):
         self.assertEqual(0, przed.execute("SELECT COUNT(*) FROM egzemplarz").fetchone()[0])
         przed.close()
 
+    def test_nieudana_migracja_kopii_nie_zmienia_bazy(self):
+        cel, _ = self.kopia()
+        nowa = self.nowa_baza("nowy_dysk")
+        with mock.patch("uslugi.archiwum.migruj", side_effect=BladNornicy("blad.migracja_zmieniona", numer=1)):
+            with self.assertRaises(BladNornicy):
+                archiwum.przywroc(nowa, cel, self.tmp / "kopie")
+        self.assertEqual(0, nowa.execute("SELECT COUNT(*) FROM egzemplarz").fetchone()[0])  # baza nietknięta
+
     def test_obcy_zip_odrzucony(self):
         obcy = self.tmp / "zdjecia.zip"
         with zipfile.ZipFile(obcy, "w") as z:

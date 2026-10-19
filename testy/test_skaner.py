@@ -6,6 +6,7 @@ import datetime as dt
 import http.client
 import json
 import os
+import queue
 import re
 import shutil
 import ssl
@@ -229,6 +230,18 @@ class TestSerwera(Kolekcja):
         adresy = adresy_lokalne()
         self.assertTrue(adresy)
         self.assertNotIn("127.0.0.1", adresy[:-1])
+
+
+class TestMostu(unittest.TestCase):
+    def test_przeterminowane_zapytanie_nie_jest_wykonywane(self):
+        # interfejs zajęty dłużej niż limit: telefon dostał 503 i ponowi skan — bez dubla w bazie
+        most = Most()
+        watek = threading.Thread(target=lambda: self.assertRaises(queue.Empty, most.zapytaj, "skan", "NOR-1", 0.05))
+        watek.start()
+        watek.join()
+        obsluga = mock.Mock(return_value={})
+        self.assertEqual(0, most.obsluz_oczekujace(obsluga))
+        obsluga.assert_not_called()
 
 
 class TestStronyTelefonu(unittest.TestCase):

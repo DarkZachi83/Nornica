@@ -35,6 +35,7 @@ import secrets
 import socket
 import ssl
 import threading
+import time
 from html import escape
 from http import cookies
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -130,7 +131,7 @@ class Most:
     def zapytaj(self, rodzaj: str, dane, limit: float = 8.0):
         """Wołane w wątku serwera. Czeka na odpowiedź wątku interfejsu."""
         odpowiedz: queue.Queue = queue.Queue(maxsize=1)
-        self._kolejka.put((rodzaj, dane, odpowiedz))
+        self._kolejka.put((rodzaj, dane, odpowiedz, time.monotonic() + limit))
         return odpowiedz.get(timeout=limit)
 
     def obsluz_oczekujace(self, obsluga) -> int:
@@ -138,9 +139,13 @@ class Most:
         liczba = 0
         while True:
             try:
-                rodzaj, dane, odpowiedz = self._kolejka.get_nowait()
+                rodzaj, dane, odpowiedz, termin = self._kolejka.get_nowait()
             except queue.Empty:
                 return liczba
+            if time.monotonic() > termin:
+                # telefon dostał już 503 i ponowi skan — wykonanie teraz zapisałoby go dwa razy,
+                # a zdjęcie i tak przepadło (plik tymczasowy usunięty po odpowiedzi)
+                continue
             try:
                 wynik = obsluga(rodzaj, dane)
             except BladNornicy as blad:
