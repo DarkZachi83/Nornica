@@ -48,9 +48,23 @@ def potomkowie(db: sqlite3.Connection, egz_id: int) -> set[int]:
 
 
 def efektywna_lokalizacja(db: sqlite3.Connection, egz_id: int) -> int | None:
-    wiersz = db.execute("SELECT lokalizacja_id FROM v_egzemplarz_lokalizacja "
-                        "WHERE egzemplarz_id = ?", (egz_id,)).fetchone()
+    """Lokalizacja korzenia zestawu, w którym tkwi egzemplarz. Ta sama reguła co
+    v_egzemplarz_lokalizacja, ale od jednego egzemplarza w górę: widok liczy
+    rekurencję dla całej tabeli i filtr po egzemplarz_id nie trafia do środka CTE."""
+    wiersz = db.execute(
+        "WITH RECURSIVE w_gore(rodzic_id, lokalizacja_id, glebokosc) AS ("
+        "  SELECT rodzic_id, lokalizacja_id, 0 FROM egzemplarz WHERE id = ?"
+        "  UNION ALL"
+        "  SELECT e.rodzic_id, e.lokalizacja_id, w.glebokosc + 1"
+        "  FROM w_gore w JOIN egzemplarz e ON e.id = w.rodzic_id"
+        "  WHERE w.glebokosc < 64"
+        ") SELECT lokalizacja_id FROM w_gore WHERE rodzic_id IS NULL", (egz_id,)).fetchone()
     return wiersz[0] if wiersz else None
+
+
+def efektywne_lokalizacje(db: sqlite3.Connection) -> dict[int, int | None]:
+    """Jak efektywna_lokalizacja, dla wszystkich egzemplarzy naraz (raporty)."""
+    return dict(db.execute("SELECT egzemplarz_id, lokalizacja_id FROM v_egzemplarz_lokalizacja"))
 
 
 def wstaw(db: sqlite3.Connection, dane: dict) -> int:

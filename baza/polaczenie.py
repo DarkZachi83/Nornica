@@ -2,6 +2,7 @@
 """Otwieranie połączenia z bazą SQLite i obsługa transakcji."""
 from __future__ import annotations
 
+import functools
 import sqlite3
 import unicodedata
 from contextlib import contextmanager
@@ -27,6 +28,7 @@ _ALFABET = "aąbcćdeęfghijklłmnńoópqrsśtuvwxyzźż"
 _POZYCJA = {litera: 1000 + i for i, litera in enumerate(_ALFABET)}
 
 
+@functools.lru_cache(maxsize=1 << 16)    # kolacja woła go dla obu stron każdego porównania
 def klucz_sortowania(tekst: str) -> tuple:
     """Klucz: litery wg alfabetu polskiego, obce litery z diakrytykami
     (é, ü) przy swojej literze bazowej, cyfry i znaki przed literami."""

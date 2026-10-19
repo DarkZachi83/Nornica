@@ -77,12 +77,20 @@ def egzemplarze_w_zakresie(db: sqlite3.Connection, lok_id: int | None) -> list[i
 # ---------------------------------------------------------------------------
 # Opisy złożonych pól
 # ---------------------------------------------------------------------------
-def opis_parametrow(db: sqlite3.Connection, kat_id: int | None, z_modelu: dict, wlasne: dict, jezyk: str) -> str:
+def opis_parametrow(db: sqlite3.Connection, kat_id: int | None, z_modelu: dict, wlasne: dict, jezyk: str,
+                    szablony: dict | None = None) -> str:
     """„Procesor: 6502C; Taktowanie procesora: 1,77 MHz” — parametry modelu
-    z nadpisaniami egzemplarza, w kolejności szablonu kategorii."""
+    z nadpisaniami egzemplarza, w kolejności szablonu kategorii.
+    szablony: pamięć szablonów na czas jednego raportu (kat_id → pola)."""
     wartosci = {**z_modelu, **wlasne}
     czesci, znane = [], set()
-    for pole in slowniki.szablon(db, kat_id):
+    if szablony is None:
+        szablon = slowniki.szablon(db, kat_id)
+    elif kat_id in szablony:
+        szablon = szablony[kat_id]
+    else:
+        szablon = szablony[kat_id] = slowniki.szablon(db, kat_id)
+    for pole in szablon:
         znane.add(pole["kod"])
         if pole["kod"] not in wartosci:
             continue
@@ -137,12 +145,15 @@ def tabela_egzemplarzy(db: sqlite3.Connection, identyfikatory: list[int], o: Opc
     tabela = Tabela("egzemplarze", t("eksport.tabela.egzemplarze", j), t("eksport.plik.egzemplarze", j), kolumny)
     sciezki = lokalizacje.sciezki(db)
     wybrane = set(identyfikatory)
-    wiersze = [e for e in egzemplarze.lista(db) if e["id"] in wybrane]
+    wszystkie = egzemplarze.lista(db)
+    wiersze = [e for e in wszystkie if e["id"] in wybrane]
     wiersze.sort(key=lambda e: e["kod_inwentarzowy"] or "")
-    po_id = {e["id"]: e for e in egzemplarze.lista(db)}
+    po_id = {e["id"]: e for e in wszystkie}
+    miejsca = egzemplarze.efektywne_lokalizacje(db)      # raz dla całej tabeli, nie zapytanie na wiersz
+    szablony: dict = {}
     from uslugi import pliki
     for e in wiersze:
-        miejsce = egzemplarze.efektywna_lokalizacja(db, e["id"])
+        miejsce = miejsca.get(e["id"])
         rodzic = po_id.get(e["rodzic_id"])
         wiersz = [
             e["kod_inwentarzowy"], egzemplarze.nazwa_wyswietlana(e), e["producent"] or "", e["model_nazwa"] or "",
@@ -152,7 +163,7 @@ def tabela_egzemplarzy(db: sqlite3.Connection, identyfikatory: list[int], o: Opc
             f"{egzemplarze.nazwa_wyswietlana(rodzic)} ({rodzic['kod_inwentarzowy']})" if rodzic else "",
             e["pozycja_montazu"] or "", e["numer_seryjny"] or "", e["rewizja"] or "", e["ilosc"],
             opis_parametrow(db, e["kat_id"], json.loads(e["model_atrybuty"] or "{}"),
-                            json.loads(e["atrybuty"] or "{}"), j),
+                            json.loads(e["atrybuty"] or "{}"), j, szablony),
             opis_zlaczy(zlacza_egzemplarza(db, e["id"]), j), e["uwagi"] or "", data_lokalna(e["zmieniono"], j),
         ]
         if o.prywatne:
@@ -186,13 +197,14 @@ def tabela_modeli(db: sqlite3.Connection, identyfikatory_egz: list[int] | None, 
         uzyte = {w[0] for w in db.execute(f"SELECT DISTINCT model_id FROM egzemplarz WHERE id IN ({znaki})",
                                           identyfikatory_egz)}
         wiersze = [m for m in wiersze if m["id"] in uzyte]
+    szablony: dict = {}
     for m in sorted(wiersze, key=lambda m: (klucz_sortowania(m["producent"] or ""), klucz_sortowania(m["nazwa"]))):
         lata = ""
         if m["rok_od"] or m["rok_do"]:
             lata = f"{m['rok_od'] or '?'}–{m['rok_do'] or '?'}" if m["rok_od"] != m["rok_do"] else str(m["rok_od"])
         tabela.wiersze.append([
             m["producent"] or "", m["nazwa"], m["numer_czesci"] or "", nazwa(m["kategoria_nazwy"], j), lata,
-            m["liczba"], opis_parametrow(db, m["kategoria_id"], json.loads(m["atrybuty"] or "{}"), {}, j),
+            m["liczba"], opis_parametrow(db, m["kategoria_id"], json.loads(m["atrybuty"] or "{}"), {}, j, szablony),
             opis_zlaczy(_zlacza_modelu(db, m["id"]), j), m["zrodlo_url"] or "", m["opis"] or ""])
     return tabela
 
@@ -204,9 +216,11 @@ def tabela_lokalizacji(db: sqlite3.Connection, lok_id: int | None, o: Opcje) -> 
         Kolumna(t("pole.typ", j), szerokosc=12), Kolumna(t("pole.liczba_egzemplarzy", j), LICZBA, 12),
         Kolumna(t("pole.uwagi", j), szerokosc=40)])
     sciezki = lokalizacje.sciezki(db)
+    liczby = dict(db.execute("SELECT lokalizacja_id, COUNT(*) FROM egzemplarz "
+                             "WHERE lokalizacja_id IS NOT NULL GROUP BY lokalizacja_id"))
     for l_id in sorted(lokalizacje_w_zakresie(db, lok_id), key=lambda i: klucz_sortowania(sciezki.get(i, ""))):
         l = lokalizacje.pobierz(db, l_id)
-        liczba = db.execute("SELECT COUNT(*) FROM egzemplarz WHERE lokalizacja_id = ?", (l_id,)).fetchone()[0]
+        liczba = liczby.get(l_id, 0)
         tabela.wiersze.append([l["kod_etykiety"] or "", sciezki.get(l_id, l["nazwa"]),
                                etykieta("lokalizacja.typ", l["typ"], j) if l["typ"] else "", liczba, l["uwagi"] or ""])
     return tabela
@@ -221,9 +235,12 @@ def tabela_historii(db: sqlite3.Connection, identyfikatory_egz: list[int], o: Op
     if not identyfikatory_egz:
         return tabela
     znaki = ", ".join("?" * len(identyfikatory_egz))
+    pobrane: dict = {}                                  # kilka zdarzeń na egzemplarz — pobierz raz
     for z in db.execute(f"SELECT * FROM zdarzenie WHERE egzemplarz_id IN ({znaki}) ORDER BY data DESC, id DESC",
-                        identyfikatory_egz):
-        e = egzemplarze.pobierz(db, z["egzemplarz_id"])
+                        identyfikatory_egz).fetchall():
+        e = pobrane.get(z["egzemplarz_id"])
+        if e is None:
+            e = pobrane[z["egzemplarz_id"]] = egzemplarze.pobierz(db, z["egzemplarz_id"])
         rodzaj = (etykieta("zdarzenie.podtyp", z["podtyp"], j) if z["podtyp"]
                   else etykieta("zdarzenie.typ", z["typ"], j))
         tabela.wiersze.append([z["data"], e["kod_inwentarzowy"], egzemplarze.nazwa_wyswietlana(e), rodzaj,
