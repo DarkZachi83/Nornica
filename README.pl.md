@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="zasoby/zrodlo/nornica.jpeg" width="760"
+       alt="Nornica w fartuchu na drabince odkłada retro komputer na podpisaną półkę pełną starych maszyn, joysticków i dyskietek">
+</p>
+<p align="center"><sub>Ilustracja wygenerowana z pomocą AI (Google Gemini) — szczegóły w <a href="zasoby/GRAFIKA.md">zasoby/GRAFIKA.md</a>.</sub></p>
+
 # NORNICA / VOLE
 
 **Katalog domowej kolekcji sprzętu retro** — komputery fabryczne, składaki PC,
