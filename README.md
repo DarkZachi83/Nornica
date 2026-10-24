@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="zasoby/zrodlo/nornica.jpeg" width="760"
+       alt="A vole in an apron on a step-ladder, putting a retro computer back on a labelled shelf full of old machines, joysticks and floppy disks">
+</p>
+<p align="center"><sub>Illustration generated with AI (Google Gemini) — see <a href="zasoby/GRAFIKA.md">zasoby/GRAFIKA.md</a>.</sub></p>
+
 # VOLE / NORNICA
 
 **A desktop catalogue for a home collection of retro computers** — factory-built
