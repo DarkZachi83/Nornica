@@ -15,6 +15,9 @@ w trakcie pracy programu.
 
 [English README](README.md)
 
+> ⭐ **Podoba Ci się program? Zostaw gwiazdkę** — to pozwala na dalszy rozwój
+> prac, a dla autora znaczy wiele 🙂
+
 ![Okno główne](docs/zrzuty/okno_glowne.png)
 
 ## Możliwości
@@ -144,6 +147,13 @@ czyta gotowe pliki PNG, więc do startu Pillow nie jest potrzebne.
     testy/               testy i dane testowe
     narzedzia/           skrypty deweloperskie
     docs/zrzuty/         zrzuty ekranu do README
+
+## Wesprzyj projekt
+
+Jeśli NORNICA przydaje Ci się w kolekcji, **zostaw gwiazdkę** ⭐ u góry tej
+strony — dzięki temu projekt łatwiej znaleźć, a prace mogą iść dalej.
+Równie mile widziane są zgłoszenia błędów i pomysły:
+[Issues](https://github.com/DarkZachi83/Nornica/issues).
 
 ## Licencja
 
