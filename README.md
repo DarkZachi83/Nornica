@@ -15,6 +15,9 @@ The interface is available in English (**VOLE**) and Polish (**NORNICA**,
 
 [Polska wersja README](README.pl.md)
 
+> ⭐ **Like the program? Please leave a star** — it helps the project keep
+> growing, and it means a lot to the author 🙂
+
 ![Main window](docs/zrzuty/okno_glowne.png)
 
 ## Features
@@ -128,6 +131,13 @@ skipped. CI runs them on every push (GitHub Actions).
 
 Identifiers are in Polish (the author's language); all user-facing text goes
 through translation keys.
+
+## Support the project
+
+If NORNICA / VOLE is useful to you, please **leave a star** ⭐ at the top of
+this page — it helps others find the project and keeps the work going.
+Bug reports and ideas are just as welcome:
+[Issues](https://github.com/DarkZachi83/Nornica/issues).
 
 ## Licence
 
