@@ -6,6 +6,9 @@
 
 # NORNICA / VOLE
 
+### ⬇️ [Pobierz najnowszą wersję dla Windows](https://github.com/DarkZachi83/Nornica/releases/latest) – bez instalowania Pythona.
+*⬇️ [Download the latest version for Windows](https://github.com/DarkZachi83/Nornica/releases/latest) – no Python installation needed.*
+
 **Katalog domowej kolekcji sprzętu retro** — komputery fabryczne, składaki PC,
 części i akcesoria. Gdzie co leży, co jest w środku, co działa, a co czeka
 na naprawę.
