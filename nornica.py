@@ -6,10 +6,12 @@ Użycie:
 
 --konsola        tylko przygotowanie bazy i podsumowanie w terminalu, bez okna
 --bez-powitania  pomija ekran powitalny
+--autotest PLIK  samosprawdzenie programu (np. zbudowanego NORNICA.exe), raport do pliku
 """
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 import konfiguracja
@@ -25,14 +27,31 @@ def _policz(polaczenie, tabela: str) -> int:
     return polaczenie.execute(f"SELECT COUNT(*) FROM {tabela}").fetchone()[0]
 
 
+def _wyjscie_konsoli() -> None:
+    """Program zbudowany jako okienkowy (NORNICA.exe) nie ma konsoli: sys.stdout
+    i sys.stderr to None, a print() kończyłby się błędem. Wtedy wyjście idzie
+    w próżnię — błędy i tak trafiają do dziennika i do okienka z komunikatem."""
+    for nazwa in ("stdout", "stderr"):
+        if getattr(sys, nazwa) is None:
+            setattr(sys, nazwa, open(os.devnull, "w", encoding="utf-8"))
+
+
 def main(argv: list[str] | None = None) -> int:
+    _wyjscie_konsoli()
     # Pomoc argparse to narzędzie deweloperskie etapu 1 — celowo bez tłumaczeń.
     parser = argparse.ArgumentParser(prog="nornica")
     parser.add_argument("--jezyk", choices=JEZYKI)
     parser.add_argument("--baza")
     parser.add_argument("--konsola", action="store_true")
     parser.add_argument("--bez-powitania", action="store_true")
+    parser.add_argument("--autotest", metavar="RAPORT")
     argumenty = parser.parse_args(argv)
+
+    if argumenty.autotest:
+        # samosprawdzenie zbudowanej paczki — na tymczasowym folderze, przed
+        # dotknięciem prawdziwego folderu danych
+        from uslugi import autotest
+        return autotest.uruchom(argumenty.autotest)
 
     try:
         konfiguracja.przygotuj_katalogi()

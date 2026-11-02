@@ -1,0 +1,98 @@
+name: wydanie Windows
+
+# Paczka NORNICA.exe dla Windows (PyInstaller) — budowana i sprawdzana na
+# prawdziwym Windowsie. Tag vX.Y.Z publikuje ją jako wydanie na GitHubie;
+# pull request zmieniający budowę i ręczne uruchomienie tylko budują i sprawdzają
+# (gotowa paczka do pobrania w „Artifacts” przebiegu).
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - "nornica.spec"
+      - "nornica.py"
+      - "requirements*.txt"
+      - "uslugi/autotest.py"
+      - ".github/workflows/wydanie.yml"
+      - ".github/wydanie.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write          # tylko do utworzenia wydania przy tagu
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Wersja programu
+        id: wersja
+        shell: pwsh
+        run: |
+          $wersja = (python -c "import wersja; print(wersja.WERSJA)").Trim()
+          "wersja=$wersja" >> $env:GITHUB_OUTPUT
+          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v$wersja") {
+            Write-Error "Tag $env:GITHUB_REF_NAME nie zgadza się z wersja.py ($wersja) — popraw jedno albo drugie."
+            exit 1
+          }
+
+      - name: Biblioteki i PyInstaller
+        run: pip install -r requirements.txt -r requirements-opcjonalne.txt pyinstaller==6.22.3
+
+      - name: Budowa NORNICA.exe
+        run: pyinstaller nornica.spec --noconfirm
+
+      - name: Samosprawdzenie paczki (QR, PDF, Excel, certyfikat, kopia, okno)
+        shell: pwsh
+        run: |
+          $raport = Join-Path $env:RUNNER_TEMP "autotest.txt"
+          $p = Start-Process -FilePath "dist\NORNICA\NORNICA.exe" -ArgumentList "--autotest", "`"$raport`"" -Wait -PassThru
+          Get-Content $raport
+          if ($p.ExitCode -ne 0) { exit 1 }
+
+      - name: Start okna programu
+        shell: pwsh
+        run: |
+          $env:NORNICA_DANE = Join-Path $env:RUNNER_TEMP "dane"
+          $p = Start-Process -FilePath "dist\NORNICA\NORNICA.exe" -ArgumentList "--bez-powitania" -PassThru
+          Start-Sleep -Seconds 15
+          if ($p.HasExited) {
+            Write-Error "Program zamknął się sam (kod $($p.ExitCode))."
+            Get-Content (Join-Path $env:NORNICA_DANE "nornica.log") -ErrorAction SilentlyContinue
+            exit 1
+          }
+          Stop-Process -Id $p.Id
+          if (-not (Test-Path (Join-Path $env:NORNICA_DANE "nornica.sqlite3"))) { Write-Error "Brak bazy po starcie."; exit 1 }
+
+      - name: Paczka ZIP
+        id: paczka
+        shell: pwsh
+        run: |
+          Copy-Item README.md, README.pl.md, LICENSE, THIRD_PARTY_NOTICES.md dist\NORNICA\
+          $nazwa = "NORNICA-${{ steps.wersja.outputs.wersja }}-windows-x64.zip"
+          Compress-Archive -Path dist\NORNICA -DestinationPath $nazwa
+          (Get-FileHash $nazwa -Algorithm SHA256).Hash.ToLower() + "  " + $nazwa | Out-File -Encoding ascii "$nazwa.sha256"
+          "nazwa=$nazwa" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NORNICA-windows
+          path: |
+            ${{ steps.paczka.outputs.nazwa }}
+            ${{ steps.paczka.outputs.nazwa }}.sha256
+
+      - name: Wydanie na GitHubie
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $nazwa = "${{ steps.paczka.outputs.nazwa }}"
+          gh release create $env:GITHUB_REF_NAME $nazwa "$nazwa.sha256" `
+            --title "NORNICA / VOLE ${{ steps.wersja.outputs.wersja }}" `
+            --notes-file .github/wydanie.md

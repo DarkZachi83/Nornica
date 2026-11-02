@@ -65,6 +65,18 @@ The interface is available in English (**VOLE**) and Polish (**NORNICA**,
 |---|---|---|
 | ![Phone](docs/zrzuty/telefon.png) | ![Labels](docs/zrzuty/etykiety.png) | ![The Retro Web](docs/zrzuty/retroweb.png) |
 
+## Download for Windows
+
+A ready-to-run package — no Python needed: download
+`NORNICA-…-windows-x64.zip` from
+[**Releases**](https://github.com/DarkZachi83/Nornica/releases/latest),
+unzip it anywhere and run `NORNICA.exe`. The program is not signed with a paid
+certificate, so Windows SmartScreen may warn on the first start: click
+**More info → Run anyway**. Each package is built and checked automatically on
+Windows by GitHub Actions.
+
+The sections below are for running from source (Linux, or Windows with Python).
+
 ## Requirements
 
 Python 3.10+ with tkinter, SQLite 3.35+ with JSON support (standard in current

@@ -66,6 +66,17 @@ w trakcie pracy programu.
 |---|---|---|
 | ![Telefon](docs/zrzuty/telefon.png) | ![Etykiety](docs/zrzuty/etykiety.png) | ![The Retro Web](docs/zrzuty/retroweb.png) |
 
+## Pobierz dla Windows
+
+Gotowa paczka, bez instalowania Pythona: pobierz `NORNICA-…-windows-x64.zip`
+z [**Releases**](https://github.com/DarkZachi83/Nornica/releases/latest),
+rozpakuj w dowolnym miejscu i uruchom `NORNICA.exe`. Program nie jest podpisany
+płatnym certyfikatem, więc przy pierwszym uruchomieniu Windows SmartScreen może
+ostrzec: kliknij **Więcej informacji → Uruchom mimo to**. Każda paczka jest
+budowana i sprawdzana automatycznie na Windowsie przez GitHub Actions.
+
+Dalsze sekcje dotyczą uruchamiania ze źródeł (Linux albo Windows z Pythonem).
+
 ## Wymagania
 
 Python 3.10+ z tkinterem, SQLite 3.35+ z obsługą JSON (standard w obecnych
