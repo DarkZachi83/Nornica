@@ -6,6 +6,9 @@
 
 # NORNICA / VOLE
 
+### ⬇️ [Pobierz najnowszą wersję dla Windows](https://github.com/DarkZachi83/Nornica/releases/latest) – bez instalowania Pythona.
+*⬇️ [Download the latest version for Windows](https://github.com/DarkZachi83/Nornica/releases/latest) – no Python installation needed.*
+
 **Katalog domowej kolekcji sprzętu retro** — komputery fabryczne, składaki PC,
 części i akcesoria. Gdzie co leży, co jest w środku, co działa, a co czeka
 na naprawę.
@@ -65,6 +68,17 @@ w trakcie pracy programu.
 | Skaner w telefonie | Arkusz etykiet | The Retro Web |
 |---|---|---|
 | ![Telefon](docs/zrzuty/telefon.png) | ![Etykiety](docs/zrzuty/etykiety.png) | ![The Retro Web](docs/zrzuty/retroweb.png) |
+
+## Pobierz dla Windows
+
+Gotowa paczka, bez instalowania Pythona: pobierz `NORNICA-…-windows-x64.zip`
+z [**Releases**](https://github.com/DarkZachi83/Nornica/releases/latest),
+rozpakuj w dowolnym miejscu i uruchom `NORNICA.exe`. Program nie jest podpisany
+płatnym certyfikatem, więc przy pierwszym uruchomieniu Windows SmartScreen może
+ostrzec: kliknij **Więcej informacji → Uruchom mimo to**. Każda paczka jest
+budowana i sprawdzana automatycznie na Windowsie przez GitHub Actions.
+
+Dalsze sekcje dotyczą uruchamiania ze źródeł (Linux albo Windows z Pythonem).
 
 ## Wymagania
 
