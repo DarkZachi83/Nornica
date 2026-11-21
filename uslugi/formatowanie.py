@@ -2,6 +2,7 @@
 """Formatowanie i odczyt wartości zależnych od języka: daty, kwoty, liczby."""
 from __future__ import annotations
 
+import re
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 
@@ -56,12 +57,49 @@ def minor_na_tekst(minor: int | None, miejsca: int, jezyk: str | None = None) ->
 
 def liczba_na_tekst(wartosc, jezyk: str | None = None) -> str:
     """33.0 -> '33'; 7.09 -> '7,09' po polsku, '7.09' po angielsku; tekst bez zmian.
+    Zakres [1.225, 1.325] -> '1,225–1,325' (pole typu „zakres”).
     Formularze przyjmują oba separatory, więc wartość wraca do bazy bez strat."""
     if isinstance(wartosc, bool):
         return "true" if wartosc else "false"
     if isinstance(wartosc, float):
         return f"{wartosc:g}".replace(".", _SEPARATOR.get(jezyk or jezyk_biezacy(), "."))
+    if _jest_zakresem(wartosc):
+        return "–".join(liczba_na_tekst(float(w), jezyk) for w in wartosc)
     return "" if wartosc is None else str(wartosc)
+
+
+# ---------------------------------------------------------------------------
+# Zakres liczb („widełki”): napięcie rdzenia procesora 1,225–1,325 V.
+# W bazie: pojedyncza liczba albo lista [od, do]. Pojedyncza liczba to ten sam
+# zapis co w polu „Liczba dziesiętna”, więc zmiana typu pola na zakres nie
+# rusza wpisanych wartości.
+# ---------------------------------------------------------------------------
+_LICZBA = r"\d+(?:[.,]\d+)?"
+_ZAKRES = re.compile(rf"^({_LICZBA})(?:(?:-|–|—|\.\.\.?|…|÷)({_LICZBA}))?$")
+
+
+def _jest_zakresem(wartosc) -> bool:
+    return (isinstance(wartosc, (list, tuple)) and len(wartosc) == 2
+            and all(isinstance(w, (int, float)) and not isinstance(w, bool) for w in wartosc))
+
+
+def tekst_na_zakres(tekst: str | None, jednostka: str | None = None) -> float | list[float] | None:
+    """„1,225-1,325”, „1.225 – 1.325 V”, „1,3” -> [1.225, 1.325] / 1.3.
+    Kolejność końców nie ma znaczenia; równe końce dają jedną liczbę.
+    Zgłasza ValueError przy czymś, co nie jest liczbą ani zakresem."""
+    tekst = (tekst or "").strip()
+    if jednostka and tekst.lower().endswith(jednostka.lower()):
+        tekst = tekst[: -len(jednostka)]
+    tekst = re.sub(r"\s+", "", tekst)
+    if not tekst:
+        return None
+    dopasowanie = _ZAKRES.match(tekst)
+    if not dopasowanie:
+        raise ValueError(tekst)
+    od, do = (float(c.replace(",", ".")) if c else None for c in dopasowanie.groups())
+    if do is None or od == do:
+        return od
+    return sorted([od, do])
 
 
 # ---------------------------------------------------------------------------

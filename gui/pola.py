@@ -19,7 +19,7 @@ from typing import Any, Callable, Iterable
 
 from i18n.tlumacz import t
 from uslugi.formatowanie import (JEDNOSTKI_POJEMNOSCI, liczba_na_tekst, pojemnosc_na_tekst,
-                                  rozbij_pojemnosc, tekst_na_bajty)
+                                  rozbij_pojemnosc, tekst_na_bajty, tekst_na_zakres)
 from wyjatki import BladNornicy
 
 Opcje = Callable[[], Iterable[tuple[Any, str]]]
@@ -189,6 +189,8 @@ class FormularzAtrybutow:
             return int(surowa)
         if opis["typ"] == "real":
             return float(surowa.replace(",", "."))
+        if opis["typ"] == "zakres":
+            return tekst_na_zakres(surowa, opis.get("jednostka"))
         if opis["typ"] == "bool":
             return surowa == "true"
         return surowa

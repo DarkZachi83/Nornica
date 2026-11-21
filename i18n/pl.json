@@ -611,6 +611,7 @@
   "typ_pola.pojemnosc": "Pojemność (B, KB, MB…)",
   "typ_pola.real": "Liczba dziesiętna",
   "typ_pola.text": "Tekst",
+  "typ_pola.zakres": "Liczba lub zakres (od–do)",
   "widok.lokalizacje": "Według lokalizacji",
   "widok.montaz": "Według montażu",
   "zakladka.historia": "Historia",
