@@ -29,7 +29,10 @@ from baza.repozytoria import slowniki as repo
 from baza.zaleznosci import opis, zaleznosci
 from wyjatki import BladNornicy
 
-TYPY_POL = ("text", "int", "real", "bool", "enum", "pojemnosc")
+TYPY_POL = ("text", "int", "real", "zakres", "bool", "enum", "pojemnosc")
+# zmiany typu, przy których wpisane wartości zostają poprawne — dozwolone także
+# dla pola w użyciu (liczba jest też poprawnym „zakresem” z jednym końcem)
+_ZGODNE_ZMIANY = {("text", "enum"), ("int", "real"), ("int", "zakres"), ("real", "zakres")}
 RODZAJE = ("komputer_fabryczny", "skladak", "czesc", "akcesorium")
 
 
@@ -194,7 +197,7 @@ def _pole_z_danych(dane: dict) -> dict:
         raise BladNornicy("blad.wybierz_typ_pola")
     pole = {"typ": typ, "nazwy": nazwy, "wlasne": True}
     jednostka = (dane.get("jednostka") or "").strip()
-    if jednostka and typ in ("int", "real"):
+    if jednostka and typ in ("int", "real", "zakres"):
         pole["jednostka"] = jednostka[:12]
     if typ == "enum":
         wartosci = []
@@ -269,7 +272,7 @@ def zapisz_pole(db: sqlite3.Connection, kat_id: int, kod: str, dane: dict) -> No
                     uzyte.append(w)
             dane = {**dane, "wartosci": list(dane.get("wartosci") or []) + uzyte}
         nowe = _pole_z_danych(dane)
-        if nowe["typ"] != stary_typ and not (stary_typ == "text" and nowe["typ"] == "enum") \
+        if nowe["typ"] != stary_typ and (stary_typ, nowe["typ"]) not in _ZGODNE_ZMIANY \
                 and any(uzycie_pola(db, kat_id, kod).values()):
             raise BladNornicy("blad.pole_typ_w_uzyciu")
         if nowe["typ"] == "enum":

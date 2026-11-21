@@ -524,7 +524,7 @@ class OknoPola(_OknoNazw):
     def _pokaz_dodatkowe(self) -> None:
         if self._jednostka is None or not self._jednostka.winfo_exists():
             return
-        if self.typ.wartosc in ("int", "real"):
+        if self.typ.wartosc in ("int", "real", "zakres"):
             self._jednostka.grid()
         else:
             self._jednostka.grid_remove()

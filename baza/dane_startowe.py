@@ -190,7 +190,8 @@ KATEGORIE = [
      "szablon": [
          _pole("taktowanie_mhz", "real", "Clock", "Taktowanie", "MHz"),
          _pole("magistrala_mhz", "real", "Bus clock", "Magistrala", "MHz"),
-         _pole("napiecie_v", "real", "Core voltage", "Napięcie rdzenia", "V"),
+         # widełki z dokumentacji, np. Core 2 Duo E4300: 1,225–1,325 V
+         _pole("napiecie_v", "zakres", "Core voltage", "Napięcie rdzenia", "V"),
          _pole("rodzina", "text", "Family", "Rodzina"),
          _pole("stepping", "text", "Stepping / S-spec", "Stepping / S-spec"),
      ]},

@@ -611,6 +611,7 @@
   "typ_pola.pojemnosc": "Capacity (B, KB, MB…)",
   "typ_pola.real": "Decimal number",
   "typ_pola.text": "Text",
+  "typ_pola.zakres": "Number or range (from–to)",
   "widok.lokalizacje": "By location",
   "widok.montaz": "By assembly",
   "zakladka.historia": "History",
