@@ -73,6 +73,119 @@ class PoleWyboru:
             self.przy_zmianie(self.wartosc)
 
 
+class PoleWyszukiwania(PoleWyboru):
+    """Lista wyboru, w której można pisać: wpisany fragment nazwy zawęża listę
+    (rozwijaną strzałką w dół albo kliknięciem). Enter wybiera pierwszą
+    pasującą pozycję i woła `przy_enter` — np. „dodaj złącze” bez sięgania
+    po myszkę. Opis tego, co zostanie wybrane, daje `podglad()`.
+
+    `dodatkowe(wartość)` — słowa szukane, ale niewyświetlane (synonimy).
+    """
+
+    _KLAWISZE_NAWIGACJI = {"Up", "Down", "Return", "KP_Enter", "Escape", "Tab", "ISO_Left_Tab",
+                           "Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L", "Alt_R"}
+
+    def __init__(self, opcje: Opcje, wartosc: Any = None, przy_zmianie: Callable[[Any], None] | None = None,
+                 dodatkowe: Callable[[Any], str] | None = None, przy_enter: Callable[[], None] | None = None):
+        super().__init__(opcje, wartosc, przy_zmianie)
+        self.dodatkowe = dodatkowe
+        self.przy_enter = przy_enter
+        self.zapytanie = ""                     # przeżywa przebudowę okna (zmianę języka)
+        self._widoczne: list[tuple[Any, str]] = []
+
+    def zbuduj(self, rodzic: tk.Misc, **opcje_widzetu) -> ttk.Combobox:
+        opcje_widzetu["state"] = "normal"
+        widzet = super().zbuduj(rodzic, **opcje_widzetu)
+        widzet.bind("<KeyRelease>", self._pisanie)
+        widzet.bind("<Return>", self._enter)
+        widzet.bind("<KP_Enter>", self._enter)
+        widzet.bind("<Escape>", lambda _e: self.wyczysc())
+        if self.zapytanie and self.wartosc is None:
+            widzet.set(self.zapytanie)
+            self._filtruj()
+        return widzet
+
+    # -- lista
+    def odswiez_opcje(self) -> None:
+        super().odswiez_opcje()
+        if self._zywy() and self.zapytanie and self.wartosc is None:
+            self.widzet.set(self.zapytanie)
+        self._filtruj()
+
+    def _filtruj(self) -> None:
+        from uslugi.wyszukiwanie import filtruj
+        szukane = "" if self.wartosc is not None else self.zapytanie
+        self._widoczne = filtruj(szukane, self._opcje, self.dodatkowe)
+        if self._zywy():
+            self.widzet.configure(values=[e for _, e in self._widoczne])
+
+    def _pokaz(self) -> None:
+        if self.wartosc is not None:
+            self.zapytanie = ""
+            self._widoczne = list(self._opcje)
+            self.widzet.configure(values=[e for _, e in self._opcje])
+        super()._pokaz()
+
+    def pasujace(self) -> list[tuple[Any, str]]:
+        return list(self._widoczne)
+
+    def kandydat(self) -> Any:
+        """Co zostanie wybrane po Enterze: wybrana pozycja albo pierwsza pasująca."""
+        if self.wartosc is not None:
+            return self.wartosc
+        if self.zapytanie and self._widoczne:
+            return self._widoczne[0][0]
+        return None
+
+    # -- zdarzenia
+    def _pisanie(self, zdarzenie=None) -> None:
+        if zdarzenie is not None and zdarzenie.keysym in self._KLAWISZE_NAWIGACJI:
+            return
+        tekst = self.widzet.get()
+        wybrana = next((e for w, e in self._opcje if w == self.wartosc), None)
+        if tekst == wybrana:
+            return
+        self.zapytanie = tekst.strip()
+        self.wartosc = None
+        self._filtruj()
+        if self.przy_zmianie:
+            self.przy_zmianie(None)
+
+    def _wybrano(self, _zdarzenie=None) -> None:
+        i = self.widzet.current()
+        if 0 <= i < len(self._widoczne):
+            self.wartosc = self._widoczne[i][0]
+            self._pokaz()
+        if self.przy_zmianie:
+            self.przy_zmianie(self.wartosc)
+
+    def zatwierdz(self) -> Any:
+        """Ustala wybór (wybrana albo pierwsza pasująca) i go zwraca."""
+        kandydat = self.kandydat()
+        if kandydat is not None and kandydat != self.wartosc:
+            self.wartosc = kandydat
+            if self._zywy():
+                self._pokaz()
+            if self.przy_zmianie:
+                self.przy_zmianie(self.wartosc)
+        return kandydat
+
+    def _enter(self, _zdarzenie=None) -> str:
+        if self.zatwierdz() is not None and self.przy_enter:
+            self.przy_enter()
+        return "break"
+
+    def wyczysc(self) -> None:
+        """Pusty wybór i pełna lista — gotowe do wpisania kolejnej nazwy."""
+        self.wartosc, self.zapytanie = None, ""
+        self._widoczne = list(self._opcje)
+        if self._zywy():
+            self.widzet.configure(values=[e for _, e in self._opcje])
+            self.widzet.set("")
+        if self.przy_zmianie:
+            self.przy_zmianie(None)
+
+
 class PoleTekstu:
     def __init__(self, tekst: str | None = ""):
         self.tekst = tekst or ""

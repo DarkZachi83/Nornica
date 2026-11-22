@@ -11,6 +11,7 @@ złączy w modelu obejmie wszystkie egzemplarze, które ich nie zmieniły.
 """
 from __future__ import annotations
 
+import json
 import tkinter as tk
 from tkinter import ttk
 
@@ -19,7 +20,8 @@ from tkinter import messagebox
 from baza.enumy import etykieta, opcje
 from baza.repozytoria import zlacza as repo
 from baza.repozytoria.slowniki import klucz_kolejnosci
-from gui.pola import PoleWyboru
+from baza.dane_startowe import SYNONIMY_ZLACZY
+from gui.pola import PoleWyboru, PoleWyszukiwania
 from i18n.tlumacz import nazwa, t
 
 KOLEJNOSC_RODZAJOW = {"port": 0, "slot": 1, "gniazdo": 2, "interfejs": 3}
@@ -34,7 +36,9 @@ class EdytorZlaczy:
         self.wartosci = dict(wartosci)
         self.zaznaczony: tuple | None = None
         self._typy = {w["id"]: w for w in repo.typy(db)}
-        self.nowy_typ = PoleWyboru(self._opcje_typow, przy_zmianie=lambda _w: self._odswiez_przyciski())
+        # pole z wpisywaniem: fragment nazwy zawęża listę, Enter dodaje pierwsze pasujące
+        self.nowy_typ = PoleWyszukiwania(self._opcje_typow, przy_zmianie=lambda _w: self._odswiez_przyciski(),
+                                         dodatkowe=self._slowa_typu, przy_enter=self.dodaj)
         self._przyciski_wiersza: list[ttk.Button] = []
         self._przyciski_typu: list[ttk.Button] = []
         self.nowa_rola = PoleWyboru(lambda: opcje("model_zlacze.rola"), "posiada")
@@ -47,6 +51,15 @@ class EdytorZlaczy:
         typy = sorted(self._typy.values(), key=lambda w: (KOLEJNOSC_RODZAJOW.get(w["rodzaj"], 9), *klucz_kolejnosci(w)))
         return [(w["id"], f"{etykieta('zlacze_typ.rodzaj', w['rodzaj'])}: {nazwa(w['nazwy'])}"
                  + ("" if w["kod"] else f"  ({t('zlacza.wlasny')})")) for w in typy]
+
+    def _slowa_typu(self, typ_id) -> str:
+        """Szukane, ale niewyświetlane: kod, nazwa w drugim języku i synonimy."""
+        typ = self._typy.get(typ_id)
+        if typ is None:
+            return ""
+        nazwy = " ".join(str(n) for n in json.loads(typ["nazwy"]).values()) if isinstance(typ["nazwy"], str) \
+            else " ".join(str(n) for n in (typ["nazwy"] or {}).values())
+        return " ".join(filter(None, (typ["kod"], nazwy, SYNONIMY_ZLACZY.get(typ["kod"]))))
 
     # ---------------------------------------------------------------- widok
     def zbuduj(self, rodzic: tk.Misc) -> None:
@@ -92,9 +105,11 @@ class EdytorZlaczy:
         self.nowa_rola.zbuduj(dodaj, width=10).grid(row=0, column=1, padx=(6, 0))
         ttk.Spinbox(dodaj, from_=1, to=64, width=4, textvariable=self.nowa_ilosc).grid(row=0, column=2, padx=(6, 0))
         ttk.Button(dodaj, text=t("akcja.dodaj"), command=self.dodaj).grid(row=0, column=3, padx=(6, 0))
+        self._podpowiedz_szukania = ttk.Label(dodaj, style="Opis.TLabel")
+        self._podpowiedz_szukania.grid(row=1, column=0, columnspan=4, sticky="w", pady=(4, 0))
         if self.glowne is not None:
             typy = ttk.Frame(dodaj)
-            typy.grid(row=1, column=0, columnspan=4, sticky="w", pady=(6, 0))
+            typy.grid(row=2, column=0, columnspan=4, sticky="w", pady=(6, 0))
             ttk.Button(typy, text=t("akcja.nowy_typ_zlacza"), command=self.nowy_typ_zlacza).pack(side="left")
             self._przyciski_typu = [
                 ttk.Button(typy, text=t("akcja.edytuj_typ_zlacza"), command=self.edytuj_typ_zlacza),
@@ -103,7 +118,7 @@ class EdytorZlaczy:
             for przycisk in self._przyciski_typu:
                 przycisk.pack(side="left", padx=(4, 0))
             self._podpowiedz_typu = ttk.Label(dodaj, style="Opis.TLabel")
-            self._podpowiedz_typu.grid(row=2, column=0, columnspan=4, sticky="w", pady=(4, 0))
+            self._podpowiedz_typu.grid(row=3, column=0, columnspan=4, sticky="w", pady=(4, 0))
         dodaj.columnconfigure(0, weight=1)
         self.wypelnij()
 
@@ -160,10 +175,24 @@ class EdytorZlaczy:
         for przycisk in self._przyciski_typu:
             if przycisk.winfo_exists():
                 przycisk.configure(state="normal" if wlasny else "disabled")
+        szukanie = getattr(self, "_podpowiedz_szukania", None)
+        if szukanie is not None and szukanie.winfo_exists():
+            szukanie.configure(text=self._opis_szukania())
         podpowiedz = getattr(self, "_podpowiedz_typu", None)
         if podpowiedz is not None and podpowiedz.winfo_exists():
             podpowiedz.configure(text=t("zlacza.typ_wbudowany") if typ is not None and not wlasny
                                  else t("zlacza.brak_na_liscie"))
+
+    def _opis_szukania(self) -> str:
+        pole = self.nowy_typ
+        if pole.wartosc is not None:
+            return t("zlacza.szukaj_enter")
+        if not pole.zapytanie:
+            return t("zlacza.szukaj_podpowiedz")
+        pasujace = pole.pasujace()
+        if not pasujace:
+            return t("zlacza.szukaj_brak", tekst=pole.zapytanie)
+        return t("zlacza.szukaj_wynik", liczba=len(pasujace), nazwa=pasujace[0][1])
 
     def _menu_wiersza(self, zdarzenie) -> None:
         iid = self._lista.identify_row(zdarzenie.y)
@@ -211,16 +240,25 @@ class EdytorZlaczy:
             self.wypelnij()
 
     def dodaj(self) -> None:
-        if not self.nowy_typ.wartosc or not self.nowa_rola.wartosc:
+        """Dodaje wybrane złącze — albo pierwsze pasujące do wpisanego fragmentu.
+        Potem nazwa w polu jest zaznaczona: pisanie od razu zaczyna kolejne
+        wyszukiwanie, a przyciski edycji typu nadal dotyczą dodanego złącza."""
+        typ_id = self.nowy_typ.zatwierdz()
+        if not typ_id or not self.nowa_rola.wartosc:
             return
         try:
             ilosc = max(1, int(self.nowa_ilosc.get()))
         except ValueError:
             ilosc = 1
-        klucz = (self.nowy_typ.wartosc, self.nowa_rola.wartosc)
+        klucz = (typ_id, self.nowa_rola.wartosc)
         self.wartosci[klucz] = (self.wartosci.get(klucz, 0) + ilosc) if self.wartosci.get(klucz) else ilosc
         self.zaznaczony = klucz
         self.wypelnij()
+        self.nowa_ilosc.set("1")
+        if self.nowy_typ._zywy():
+            self.nowy_typ.widzet.focus_set()
+            self.nowy_typ.widzet.select_range(0, "end")
+            self.nowy_typ.widzet.icursor("end")
 
     def nowy_typ_zlacza(self) -> None:
         from gui.okno_typu_zlacza import OknoTypuZlacza

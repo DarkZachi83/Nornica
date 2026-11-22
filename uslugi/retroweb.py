@@ -237,6 +237,8 @@ ZLACZA = [
     (r"game\s*port", "gameport_da15"), (r"\bsata\b", "sata"), (r"\bide\b|\bata\b|pata", "ide40"),
     (r"scsi", "scsi50"), (r"st.?506|mfm|rll", "st506"),
     (r"parallel", "lpt_db25"), (r"serial", "com_db9"), (r"\busb\b", "usb_a"),
+    (r"dvi.?i\b.*dual|dual.?link.*dvi.?i\b", "dvi_i_dl"), (r"dvi.?i\b", "dvi_i"), (r"\bdvi\b", "dvi_d"),
+    (r"hdmi", "hdmi"), (r"s.?video|tv.?out|\bvivo\b", "svideo"),
     (r"\bvga\b|de.?15", "vga_de15"), (r"\bcga\b|\bega\b|rgbi", "rgbi_de9"), (r"composite|rca", "kompozyt_rca"),
     (r"midi", "midi_din5"), (r"rj.?45|ethernet|10base.?t", "rj45"), (r"bnc|10base.?2", "bnc"),
 ]
