@@ -335,7 +335,8 @@ KATEGORIE = [
      "nazwy": _n("Optical drives", "Napędy optyczne"),
      "szablon": [
          _pole("rodzaj_napedu", "enum", "Drive type", "Rodzaj napędu",
-               wartosci=("CD-ROM", "CD-R", "CD-RW", "DVD-ROM", "DVD±RW")),
+               wartosci=("CD-ROM", "CD-R", "CD-RW", "DVD-ROM", "DVD±RW", "DVD-RAM", "HD DVD",
+                         "BD-ROM", "BD-ROM/DVD±RW (combo)", "BD-R/RE")),
          _pole("predkosc", "text", "Speed", "Prędkość"),
      ]},
     {"kod": "napedy_tasmowe", "rodzic": "czesci", "rodzaj": "czesc",

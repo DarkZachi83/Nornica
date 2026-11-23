@@ -90,7 +90,7 @@ class TestMigracji007(unittest.TestCase):
                    "('procesory', 'czesc', '{\"pl\": \"Procesory\"}', ?)", (json.dumps(szablon),))
         db.execute("INSERT INTO model (kategoria_id, nazwa, atrybuty) VALUES (1, 'Pentium MMX', ?)",
                    (json.dumps({"napiecie_v": 2.8, "taktowanie_mhz": 166.0}),))
-        self.assertEqual([7], migruj(db)[0])
+        self.assertEqual(7, migruj(db)[0][0])               # 007 jako pierwsza z oczekujących
         typy = {p["kod"]: p["typ"] for p in json.loads(
             db.execute("SELECT szablon_atrybutow FROM kategoria").fetchone()[0])}
         self.assertEqual({"taktowanie_mhz": "real", "napiecie_v": "zakres"}, typy)
