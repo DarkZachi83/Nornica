@@ -13,6 +13,7 @@ from tkinter import ttk
 
 from baza.enumy import opcje
 from baza.repozytoria import egzemplarze, slowniki
+from baza.repozytoria import szczegoly as repo_szczegoly
 from gui.bazowe import OknoDialogowe, pokaz_blad
 from gui.pola import PoleTekstu, PoleWyboru
 from i18n.tlumacz import nazwa, t
@@ -32,8 +33,7 @@ class OknoZdarzenia(OknoDialogowe):
         super().__init__(glowne)
         self.egz_id = egz_id
         self.zdarzenie_id = zdarzenie_id
-        z = self.db.execute("SELECT * FROM zdarzenie WHERE id = ?", (zdarzenie_id,)).fetchone() \
-            if zdarzenie_id else None
+        z = repo_szczegoly.zdarzenie(self.db, zdarzenie_id)
         self.typ = tk.StringVar(value=z["typ"] if z is not None else typ)
         self.podtyp = PoleWyboru(lambda: opcje("zdarzenie.podtyp"),
                                  (z["podtyp"] if z is not None else None) or "naprawa")

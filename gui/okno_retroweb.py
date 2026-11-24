@@ -108,7 +108,7 @@ class OknoRetroWeb(OknoDialogowe):
     def _wypisz_podglad(self, tekst: tk.Text) -> None:
         from baza.repozytoria import slowniki
         p = retroweb.propozycja(self.db, self.strona)
-        kat = self.db.execute("SELECT id, nazwy FROM kategoria WHERE kod = ?", (p.kategoria_kod,)).fetchone()
+        kat = slowniki.kategoria_po_kodzie(self.db, p.kategoria_kod)
         tekst.insert("end", t("trw.ogolne") + "\n", ("naglowek",))
         for etykieta, wartosc in ((t("pole.kategoria"), nazwa(kat["nazwy"])), (t("pole.producent"), p.producent),
                                   (t("pole.nazwa_modelu"), p.nazwa), (t("pole.rok_od"), p.rok_od),

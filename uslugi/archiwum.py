@@ -89,6 +89,15 @@ def _liczby(db: sqlite3.Connection) -> dict:
                                   ("modele", "model"), ("zasoby", "zasob"))}
 
 
+
+def zawartosc(db: sqlite3.Connection) -> dict:
+    """Co trafi do kopii: liczby egzemplarzy i lokalizacji, pliki i ich łączny rozmiar."""
+    liczby = _liczby(db)
+    pliki, rozmiar = db.execute("SELECT COUNT(DISTINCT plik_sciezka), coalesce(SUM(plik_rozmiar), 0) "
+                                "FROM zasob WHERE plik_sciezka IS NOT NULL").fetchone()
+    return {"egzemplarze": liczby["egzemplarze"], "lokalizacje": liczby["lokalizacje"],
+            "pliki": pliki, "rozmiar": rozmiar}
+
 # ---------------------------------------------------------------------------
 # Tworzenie
 # ---------------------------------------------------------------------------

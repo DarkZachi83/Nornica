@@ -12,6 +12,12 @@ def statusy(db: sqlite3.Connection) -> list[sqlite3.Row]:
     return db.execute("SELECT id, kod, nazwy FROM status ORDER BY kod IS NULL, kolejnosc, id").fetchall()
 
 
+def status(db: sqlite3.Connection, status_id: int | None) -> sqlite3.Row | None:
+    if not status_id:
+        return None
+    return db.execute("SELECT * FROM status WHERE id = ?", (status_id,)).fetchone()
+
+
 def status_id(db: sqlite3.Connection, kod: str) -> int | None:
     wiersz = db.execute("SELECT id FROM status WHERE kod = ?", (kod,)).fetchone()
     return wiersz[0] if wiersz else None
@@ -63,6 +69,10 @@ def kategorie(db: sqlite3.Connection) -> list[sqlite3.Row]:
 
 def kategoria(db: sqlite3.Connection, kat_id: int) -> sqlite3.Row | None:
     return db.execute("SELECT * FROM kategoria WHERE id = ?", (kat_id,)).fetchone()
+
+
+def kategoria_po_kodzie(db: sqlite3.Connection, kod: str) -> sqlite3.Row | None:
+    return db.execute("SELECT * FROM kategoria WHERE kod = ?", (kod,)).fetchone()
 
 
 def kategorie_plasko(db: sqlite3.Connection, jezyk: str | None = None) -> list[tuple[int, int, str]]:

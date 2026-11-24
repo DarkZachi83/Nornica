@@ -98,7 +98,7 @@ class TestPrzebudowy(unittest.TestCase):
         self.okno._zastosuj_filtr()
         self.assertTrue(self.drzewo().exists(f"E{self.karta}"))
         self.okno.tryb_var.set("montaz")
-        self.okno._tryb_zmieniony()
+        self.okno.tryb_zmieniony()
         self.assertFalse(self.drzewo().exists("L1"))
 
     def test_otwarte_okno_przezywa_przebudowe_z_danymi(self):

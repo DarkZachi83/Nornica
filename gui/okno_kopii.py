@@ -70,15 +70,12 @@ class OknoKopii(OknoDialogowe):
         for dziecko in self._info.winfo_children():
             dziecko.destroy()
         ostatnia = ustawienia.pobierz(self.db, "kopia_ostatnia")
-        liczby = {n: self.db.execute(f"SELECT COUNT(*) FROM {tab}").fetchone()[0]
-                  for n, tab in (("egzemplarze", "egzemplarz"), ("lokalizacje", "lokalizacja"))}
-        pliki = self.db.execute("SELECT COUNT(DISTINCT plik_sciezka), coalesce(SUM(plik_rozmiar), 0) "
-                                "FROM zasob WHERE plik_sciezka IS NOT NULL").fetchone()
+        liczby = archiwum.zawartosc(self.db)
         for wiersz, (etykieta, wartosc) in enumerate((
                 (t("kopia.ostatnia"), data_lokalna(ostatnia) if ostatnia else t("kopia.nigdy")),
                 (t("kopia.zawartosc"), t("kopia.liczby", egzemplarze=liczby["egzemplarze"],
-                                         lokalizacje=liczby["lokalizacje"], pliki=pliki[0],
-                                         rozmiar=pojemnosc_na_tekst(pliki[1]))))):
+                                         lokalizacje=liczby["lokalizacje"], pliki=liczby["pliki"],
+                                         rozmiar=pojemnosc_na_tekst(liczby["rozmiar"]))))):
             ttk.Label(self._info, text=etykieta, style="Pole.TLabel").grid(row=wiersz, column=0, sticky="w",
                                                                            padx=(0, 12))
             ttk.Label(self._info, text=wartosc).grid(row=wiersz, column=1, sticky="w")

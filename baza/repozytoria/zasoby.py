@@ -16,6 +16,12 @@ from __future__ import annotations
 import sqlite3
 
 
+def pobierz(polaczenie: sqlite3.Connection, zasob_id: int | None) -> sqlite3.Row | None:
+    if not zasob_id:
+        return None
+    return polaczenie.execute("SELECT * FROM zasob WHERE id = ?", (zasob_id,)).fetchone()
+
+
 def osierocone(polaczenie: sqlite3.Connection) -> list[sqlite3.Row]:
     """Zasoby bez żadnego powiązania, najstarsze najpierw.
 

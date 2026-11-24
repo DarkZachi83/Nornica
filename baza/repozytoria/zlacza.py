@@ -16,6 +16,10 @@ def typy(db: sqlite3.Connection) -> list[sqlite3.Row]:
                       "ORDER BY kod IS NULL, kolejnosc, id").fetchall()
 
 
+def typ(db: sqlite3.Connection, typ_id: int) -> sqlite3.Row | None:
+    return db.execute("SELECT * FROM zlacze_typ WHERE id = ?", (typ_id,)).fetchone()
+
+
 def modelu(db: sqlite3.Connection, model_id: int | None) -> Zlacza:
     if not model_id:
         return {}
