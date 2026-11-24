@@ -133,13 +133,24 @@ NORNICA works without it; the *AI assistant…* button then says what is missing
    `gemma3:4b`). The model runs only on your computer — the program connects
    to 127.0.0.1 only.
 2. Choose a search engine in the assistant window:
-   - **Ollama web search** — a free ollama.com account and an API key
-     (account settings → *Keys*). Only the query, e.g. "KM44C4100 datasheet",
-     goes to Ollama. The key is kept in `ollama_klucz.txt` in the data folder
-     (owner-only) or in the `OLLAMA_API_KEY` variable — not in the database
-     and not in backups.
-   - **SearXNG** — your own search engine, e.g. in Docker; add `json` to
-     `search: formats` in `settings.yml`.
+   - **SearXNG** (default, free) — a search engine you run yourself in
+     Docker. Ready-made files are in `narzedzia/searxng/`; on Arch Linux:
+
+         sudo pacman -S docker docker-compose
+         sudo systemctl enable --now docker
+         sudo usermod -aG docker $USER        # then log out and back in
+         mkdir -p ~/searxng/core-config
+         cp narzedzia/searxng/docker-compose.yml ~/searxng/
+         cp narzedzia/searxng/settings.yml ~/searxng/core-config/
+         sed -i "s|ZMIEN_MNIE|$(openssl rand -hex 32)|" ~/searxng/core-config/settings.yml
+         cd ~/searxng && docker compose up -d
+
+     Address in the assistant window: `http://127.0.0.1:8080`. SearXNG is
+     reachable from this computer only and starts with the system.
+   - **Ollama web search** — needs an ollama.com account, an API key and
+     paid credits or a subscription. Only the query goes to Ollama. The key
+     is kept in `ollama_klucz.txt` in the data folder (owner-only) or in the
+     `OLLAMA_API_KEY` variable — not in the database and not in backups.
 
 Small models can make things up, so values without a confirmed quote are
 marked unconfirmed and are not ticked. The memory type (FPM or EDO) usually
