@@ -90,8 +90,15 @@ wydaniach Pythona).
 **Arch Linux**
 
     sudo pacman -S python tk python-pillow python-qrcode python-reportlab python-openpyxl python-cryptography
-    pip install --user xlwt          # opcjonalnie, eksport do starego .xls
-    pip install --user ttkbootstrap==2.2.7   # opcjonalnie, nowy wygląd i motyw ciemny
+
+Biblioteki spoza repozytoriów Arch (ttkbootstrap — nowy wygląd i motyw ciemny,
+xlwt — eksport do starego .xls) instaluje się w osobnym środowisku: Arch nie
+pozwala na `pip install` w systemowym Pythonie (PEP 668). Środowisko widzi
+pakiety z pacmana:
+
+    python -m venv --system-site-packages ~/.venvs/nornica
+    ~/.venvs/nornica/bin/pip install ttkbootstrap==2.2.7 xlwt
+    ~/.venvs/nornica/bin/python nornica.py
 
 Pakiet `tk` jest potrzebny dla tkintera — w Arch nie instaluje się razem
 z Pythonem.
