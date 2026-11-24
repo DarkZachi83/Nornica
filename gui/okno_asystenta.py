@@ -192,17 +192,17 @@ class OknoAsystenta(PracaAsystenta, OknoDialogowe):
         self.pracuje, self.blad, self.wynik, self.zaznaczone = True, None, None, set()
         self.postep = t("asystent.krok_start")
         anuluj, jezyk, u = self._anuluj, jezyk_biezacy(), self.ustawienia()
+        kolejka, fabryka, szablon = self._kolejka, self._fabryka, self.szablon
 
-        def w_tle():
+        def w_tle():                         # bez odwołań do okna — patrz _uruchom_watek
             try:
-                asystent = self._fabryka(u)
-                wynik = asystent.zaproponuj(self.szablon, dane, tekst_zapytania, anuluj,
-                                            lambda klucz, **p: self._kolejka.put(("krok", klucz, p)), jezyk)
-                self._kolejka.put(("wynik", wynik, None))
+                wynik = fabryka(u).zaproponuj(szablon, dane, tekst_zapytania, anuluj,
+                                              lambda klucz, **p: kolejka.put(("krok", klucz, p)), jezyk)
+                kolejka.put(("wynik", wynik, None))
             except Przerwano:
-                self._kolejka.put(("przerwano", None, None))
+                kolejka.put(("przerwano", None, None))
             except Exception as blad:   # noqa: BLE001 — wynik wraca do wątku interfejsu
-                self._kolejka.put(("blad", None, blad))
+                kolejka.put(("blad", None, blad))
 
         self._uruchom_watek(w_tle, "asystent")
         self._odswiez()

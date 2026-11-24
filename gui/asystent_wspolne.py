@@ -166,16 +166,20 @@ class PracaAsystenta:
 
     def wczytaj_modele(self) -> None:
         """Lista modeli z Ollamy w tle; brak Ollamy to komunikat, nie błąd okna."""
-        u = self.ustawienia()
+        u, kolejka, lista_modeli = self.ustawienia(), self._kolejka, self._lista_modeli
 
-        def w_tle():
+        def w_tle():                         # bez odwołań do okna — patrz _uruchom_watek
             try:
-                self._kolejka.put(("modele", self._lista_modeli(u), None))
+                kolejka.put(("modele", lista_modeli(u), None))
             except Exception as blad:   # noqa: BLE001
-                self._kolejka.put(("modele", [], blad))
+                kolejka.put(("modele", [], blad))
         self._uruchom_watek(w_tle, "asystent-modele")
 
     def _uruchom_watek(self, cel, nazwa: str) -> None:
+        """cel NIE może odwoływać się do okna (self): gdy wątek skończy się ostatni,
+        sprzątałby okno i jego zmienne tkintera poza wątkiem głównym — tkinter
+        zgłasza wtedy „main thread is not in main loop” i blokuje się na sekundę
+        przy każdej zmiennej. Wątek dostaje kolejkę i gotowe wartości."""
         self._w_tle += 1
         threading.Thread(target=cel, name=nazwa, daemon=True).start()
         if self._w_tle == 1:                 # jedna pętla odbioru na wszystkie wątki

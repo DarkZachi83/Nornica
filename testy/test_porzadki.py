@@ -14,7 +14,10 @@ from baza.polaczenie import otworz_baze
 from baza.repozytoria import slowniki
 from uslugi import inwentarz, pliki, porzadki
 
-STARY = time.time() + porzadki.WIEK_PLIKU_BEZ_WPISU + 60    # „teraz” w przyszłości: pliki są stare
+def stary() -> float:
+    """„Teraz” w przyszłości: pliki są stare. Liczone przy KAŻDYM użyciu — stała z chwili
+    wczytania modułu przestawała działać, gdy zestaw testów trwał ponad minutę."""
+    return time.time() + porzadki.WIEK_PLIKU_BEZ_WPISU + 60
 
 
 class TestPorzadkow(unittest.TestCase):
@@ -96,7 +99,7 @@ class TestPorzadkow(unittest.TestCase):
         pliki.sciezka_pliku(self.db, sciezka2).unlink()
 
         self.assertEqual([], porzadki.pliki_bez_wpisu(self.db))            # świeży — może być dodawany
-        bez = porzadki.pliki_bez_wpisu(self.db, teraz=STARY)
+        bez = porzadki.pliki_bez_wpisu(self.db, teraz=stary())
         self.assertEqual([("zz/obcy.bin", 10)], [(p["sciezka"], p["rozmiar"]) for p in bez])
         brak = porzadki.brakujace_pliki(self.db)
         self.assertEqual([(z2, pc)], [(p["id"], p["egzemplarz_id"]) for p in brak])
@@ -113,7 +116,7 @@ class TestPorzadkow(unittest.TestCase):
         # w międzyczasie „drugi.bin” dostał wpis w bazie
         self.db.execute("INSERT INTO zasob (typ, tytul, plik_sciezka) VALUES ('notatka', 'd', 'yy/drugi.bin')")
         usuniete = porzadki.usun_pliki_bez_wpisu(
-            self.db, ["zz/obcy.bin", "yy/drugi.bin", "../poza.txt", "../../poza.txt"], teraz=STARY)
+            self.db, ["zz/obcy.bin", "yy/drugi.bin", "../poza.txt", "../../poza.txt"], teraz=stary())
         self.assertEqual(1, usuniete)
         self.assertFalse((katalog / "zz").exists())                 # pusty podfolder sprzątnięty
         self.assertTrue((katalog / "yy" / "drugi.bin").exists())

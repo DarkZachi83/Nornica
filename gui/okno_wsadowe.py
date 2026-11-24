@@ -249,11 +249,11 @@ class OknoWsadowe(PracaAsystenta, OknoDialogowe):
         self.pracuje, self.postep = True, t("asystent.krok_start")
         anuluj, jezyk, u = self._anuluj, jezyk_biezacy(), self.ustawienia()
         teksty = [(p.tekst, nazwa(kategoria["nazwy"])) for p in pozycje]
-        kolejka = self._kolejka
+        kolejka, fabryka = self._kolejka, self._fabryka
 
-        def w_tle():
+        def w_tle():                         # bez odwołań do okna — patrz _uruchom_watek
             try:
-                asystent = self._fabryka(u)
+                asystent = fabryka(u)
                 for numer, (tekst, nazwa_kategorii) in enumerate(teksty):
                     kolejka.put(("pozycja", numer, None))
                     dane = {"kategoria": nazwa_kategorii, "oznaczenia": tekst}
