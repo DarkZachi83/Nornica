@@ -5,5 +5,7 @@ openpyxl>=3.1         # eksport .xlsx
 qrcode>=7.4           # kody QR na karcie i etykietach
 reportlab>=4.0        # arkusze etykiet PDF
 cryptography>=41      # szyfrowane połączenie ze skanerem w telefonie (kamera na żywo)
+ttkbootstrap==2.2.7   # wygląd okna, motyw jasny i ciemny; bez niej — zwykły ttk z tą samą paletą
+                      # (wersja przypięta: 2.x szybko się zmienia, a następca „bootstack” jest w fazie alfa)
 # Integracja z The Retro Web korzysta tylko z biblioteki standardowej.
 # Każda nowa biblioteka trafia też do THIRD_PARTY_NOTICES.md (pilnuje tego test).

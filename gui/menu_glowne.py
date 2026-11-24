@@ -6,6 +6,7 @@ from __future__ import annotations
 import tkinter as tk
 
 from gui.model_drzewa import TRYBY
+from gui.styl import MOTYWY
 from i18n.tlumacz import JEZYKI, t
 
 TRYB_KLUCZ = {"lokalizacje": "widok.lokalizacje", "montaz": "widok.montaz"}
@@ -35,6 +36,10 @@ def zbuduj_menu(okno) -> None:
     for tryb in TRYBY:
         widok.add_radiobutton(label=t(TRYB_KLUCZ[tryb]), value=tryb, variable=okno.tryb_var,
                               command=okno.tryb_zmieniony)
+    widok.add_separator()
+    for motyw in MOTYWY:
+        widok.add_radiobutton(label=t(f"motyw.{motyw}"), value=motyw, variable=okno.motyw_var,
+                              command=okno.przelacz_motyw)
     widok.add_separator()
     widok.add_command(label=t("akcja.odswiez"), accelerator="F5", command=okno.odswiez)
     menu.add_cascade(label=t("menu.widok"), menu=widok)

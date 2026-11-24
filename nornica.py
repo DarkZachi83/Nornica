@@ -68,7 +68,9 @@ def main(argv: list[str] | None = None) -> int:
         ustaw_jezyk(ustawienia.pobierz(polaczenie, "jezyk"))
 
         if not argumenty.konsola:
+            from gui import styl
             from gui.okno_glowne import OknoGlowne
+            styl.wlacz_ostrosc_dpi()       # przed pierwszym oknem, inaczej Windows rozmywa czcionki
             okno = OknoGlowne(polaczenie, pokaz_powitanie=not argumenty.bez_powitania)
             okno.mainloop()
             polaczenie.close()

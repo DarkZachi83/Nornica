@@ -48,7 +48,8 @@ class OknoGlowne(AkcjeGlowne, SkanerGlowny, tk.Tk):
         self.db = polaczenie
         if pokaz_powitanie:
             self.withdraw()
-        self.czcionki = styl.ustaw(self)
+        self.motyw = styl.nazwa_motywu(ustawienia.pobierz(self.db, "motyw"))
+        self.czcionki = styl.ustaw(self, self.motyw)
         self._grafiki = self._wczytaj_grafiki()
         if self._grafiki.get("ikony"):
             self.iconphoto(True, *self._grafiki["ikony"])
@@ -59,6 +60,7 @@ class OknoGlowne(AkcjeGlowne, SkanerGlowny, tk.Tk):
         self.filtr_var.trace_add("write", self._filtr_zmieniony)
         self.tryb_var = tk.StringVar(value=self.stan.tryb)
         self.jezyk_var = tk.StringVar(value=jezyk_biezacy())
+        self.motyw_var = tk.StringVar(value=self.motyw)
         self._dialogi: list[tk.Toplevel] = []
         self._zadanie_filtra = None
         # Skaner: pole „Skanuj” i serwer telefonu. Stan w obiekcie (przeżywa przebudowę),
@@ -147,15 +149,24 @@ class OknoGlowne(AkcjeGlowne, SkanerGlowny, tk.Tk):
         for tryb in TRYBY:
             ttk.Radiobutton(pasek, text=t(TRYB_KLUCZ[tryb]), value=tryb, variable=self.tryb_var,
                             command=self.tryb_zmieniony).pack(side="left", padx=(0, 8))
-        szukaj = ttk.Entry(pasek, textvariable=self.filtr_var, width=26)
-        szukaj.pack(side="right")
-        ttk.Label(pasek, text=t("pasek.szukaj")).pack(side="right", padx=(0, 6))
+        napis, inny = styl.przelacznik(self.motyw)
+        self._widzety["motyw"] = ttk.Button(pasek, text=napis, style="Motyw.TButton", width=3,
+                                            command=lambda: self.przelacz_motyw(inny))
+        self._widzety["motyw"].pack(side="right", padx=(10, 0))
+        # Skaner i wyszukiwarka w ramce pakowanej NA KOŃCU, a pole wyszukiwania
+        # ostatnie w ramce: przy wąskim oknie kurczy się ono, nie napisy
+        # (wcześniej przy 1180 px „Skanuj” dostawało 1 piksel).
+        szukanie = ttk.Frame(pasek)
+        szukanie.pack(side="left", fill="x", expand=True, padx=(10, 0))
+        ttk.Label(szukanie, text=t("pasek.skanuj")).pack(side="left", padx=(0, 6))
         # Pole skanera: czytnik USB/Bluetooth „wpisuje” kod i naciska Enter
-        skan = ttk.Entry(pasek, textvariable=self.skan_var, width=14)
-        skan.pack(side="right", padx=(0, 16))
+        skan = ttk.Entry(szukanie, textvariable=self.skan_var, width=11)
+        skan.pack(side="left", padx=(0, 14))
         skan.bind("<Return>", lambda _e: self._skan_z_pola())
         skan.bind("<KP_Enter>", lambda _e: self._skan_z_pola())
-        ttk.Label(pasek, text=t("pasek.skanuj")).pack(side="right", padx=(0, 6))
+        ttk.Label(szukanie, text=t("pasek.szukaj")).pack(side="left", padx=(0, 6))
+        szukaj = ttk.Entry(szukanie, textvariable=self.filtr_var, width=8)
+        szukaj.pack(side="left", fill="x", expand=True)
         self._widzety["skan"] = skan
         self._widzety["szukaj"] = szukaj
         self.bind("<Control-f>", lambda _e: self._widzety["szukaj"].focus_set())
@@ -201,6 +212,14 @@ class OknoGlowne(AkcjeGlowne, SkanerGlowny, tk.Tk):
         jezyk = ustaw_jezyk(jezyk or self.jezyk_var.get())
         self.jezyk_var.set(jezyk)
         ustawienia.zapisz(self.db, "jezyk", jezyk)
+        self.przebuduj()
+
+    def przelacz_motyw(self, motyw: str | None = None) -> None:
+        """Jasny ↔ ciemny: przycisk ☀/☾ na pasku albo menu Widok. Zapamiętany w bazie."""
+        self.motyw = styl.nazwa_motywu(motyw or self.motyw_var.get())
+        self.motyw_var.set(self.motyw)
+        styl.ustaw(self, self.motyw, self.czcionki)
+        ustawienia.zapisz(self.db, "motyw", self.motyw)
         self.przebuduj()
 
     def przebuduj(self) -> None:
@@ -381,4 +400,12 @@ class OknoGlowne(AkcjeGlowne, SkanerGlowny, tk.Tk):
     def destroy(self) -> None:
         if self.serwer is not None:
             self.serwer.zatrzymaj()        # serwer nie może przeżyć programu
+        # Zaplanowane zadania (most telefonu, filtr, podział) anulowane jawnie:
+        # ttkbootstrap trzyma odwołanie do okna, więc interpreter Tcl żyje dłużej
+        # i bez tego zadania odpaliłyby po zamknięciu (w testach — w cudzym oknie).
+        try:
+            for zadanie in self.tk.splitlist(self.tk.call("after", "info")):
+                self.after_cancel(zadanie)
+        except tk.TclError:
+            pass
         super().destroy()

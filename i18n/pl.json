@@ -352,6 +352,8 @@
   "mobilny.zdjecie_zly_typ": "To nie jest zdjęcie (JPEG, PNG, HEIC, WebP ani GIF).",
   "mobilny.zly_klucz": "Ten kod parowania jest już nieaktualny. Zeskanuj ponownie kod pokazany w programie.",
   "mobilny.zrob_zdjecie": "Zrób zdjęcie",
+  "motyw.ciemny": "Motyw ciemny",
+  "motyw.jasny": "Motyw jasny",
   "ogolne.nie": "Nie",
   "ogolne.tak": "Tak",
   "okno.blad": "Błąd",

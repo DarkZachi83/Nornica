@@ -21,6 +21,7 @@ wszystkie są zgodne z GPL-3.0.
 | [openpyxl](https://foss.heptapod.net/openpyxl/openpyxl) | MIT | eksport .xlsx |
 | [xlwt](https://github.com/python-excel/xlwt) | BSD | eksport .xls |
 | [cryptography](https://cryptography.io/) | Apache-2.0 OR BSD-3-Clause | szyfrowane połączenie z telefonem |
+| [ttkbootstrap](https://github.com/israel-dryer/ttkbootstrap) | MIT AND (Apache-2.0 OR BSD-2-Clause) | wygląd okna, motyw jasny i ciemny |
 
 Czcionki (DejaVu Sans, Arial itp.) nie są dołączone — program korzysta
 z czcionek zainstalowanych w systemie i osadza ich podzbiór w plikach PDF

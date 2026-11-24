@@ -28,7 +28,8 @@ a = Analysis(
     pathex=[str(KORZEN)],
     datas=dane,
     # biblioteki opcjonalne ładowane dopiero przy użyciu funkcji — dołączone jawnie
-    hiddenimports=["openpyxl", "xlwt", "qrcode", "reportlab", "cryptography", "PIL.ImageTk"],
+    hiddenimports=["openpyxl", "xlwt", "qrcode", "reportlab", "cryptography", "PIL.ImageTk",
+                   "ttkbootstrap"],   # grafiki motywu dołącza hak PyInstallera z samej biblioteki
     excludes=["testy", "narzedzia", "pytest", "unittest.mock"],
     noarchive=False,
 )
