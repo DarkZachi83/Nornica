@@ -56,7 +56,7 @@
   "asystent.brak_modelu": "Wybierz model AI z listy (np. qwen3:8b).",
   "asystent.brak_ollamy": "Nie można połączyć się z Ollamą ({adres}): {opis}. Uruchom Ollamę i pobierz model, np.: ollama pull qwen3:8b",
   "asystent.brak_opisu": "Wpisz producenta, nazwę albo oznaczenia — nie ma czego szukać.",
-  "asystent.brak_searxng": "Wpisz adres swojej instancji SearXNG (np. http://127.0.0.1:8080).",
+  "asystent.brak_searxng": "Wpisz adres swojej instancji SearXNG (np. http://127.0.0.1:8888).",
   "asystent.brak_wynikow": "Wyszukiwarka nic nie znalazła dla: {zapytanie}. Spróbuj krótszego zapytania (np. samo oznaczenie kości).",
   "asystent.cytat": "Cytat: {cytat}",
   "asystent.dopisek_opisu": "Dane uzupełnione asystentem AI ({model}) na podstawie:",

@@ -58,7 +58,7 @@ class OknoAsystenta(OknoDialogowe):
         u = lambda klucz, domyslna="": ustawienia.pobierz(self.db, klucz) or domyslna  # noqa: E731
         self.model = tk.StringVar(value=u("asystent_model", MODEL_DOMYSLNY))
         self.zrodlo = tk.StringVar(value=u("asystent_zrodlo", "searxng"))
-        self.searxng = tk.StringVar(value=u("asystent_searxng", "http://127.0.0.1:8080"))
+        self.searxng = tk.StringVar(value=u("asystent_searxng", "http://127.0.0.1:8888"))
         self.adres_ollamy = tk.StringVar(value=u("asystent_ollama", "http://127.0.0.1:11434"))
         self.klucz = tk.StringVar(value=wyszukiwarki.klucz_api())
         self.zapytanie = tk.StringVar()

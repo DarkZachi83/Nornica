@@ -149,7 +149,7 @@ Nornica działa bez niego; przycisk *Asystent AI…* mówi wtedy, czego brakuje.
          sed -i "s|ZMIEN_MNIE|$(openssl rand -hex 32)|" ~/searxng/core-config/settings.yml
          cd ~/searxng && docker compose up -d
 
-     W oknie asystenta adres: `http://127.0.0.1:8080`. SearXNG działa tylko
+     W oknie asystenta adres: `http://127.0.0.1:8888`. SearXNG działa tylko
      na tym komputerze i startuje razem z systemem.
    - **Ollama web search** — wymaga konta na ollama.com, klucza API
      i płatnych kredytów albo subskrypcji. Do Ollamy trafia samo zapytanie.

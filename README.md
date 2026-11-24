@@ -145,7 +145,7 @@ NORNICA works without it; the *AI assistant…* button then says what is missing
          sed -i "s|ZMIEN_MNIE|$(openssl rand -hex 32)|" ~/searxng/core-config/settings.yml
          cd ~/searxng && docker compose up -d
 
-     Address in the assistant window: `http://127.0.0.1:8080`. SearXNG is
+     Address in the assistant window: `http://127.0.0.1:8888`. SearXNG is
      reachable from this computer only and starts with the system.
    - **Ollama web search** — needs an ollama.com account, an API key and
      paid credits or a subscription. Only the query goes to Ollama. The key

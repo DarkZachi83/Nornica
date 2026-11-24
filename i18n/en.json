@@ -56,7 +56,7 @@
   "asystent.brak_modelu": "Choose an AI model from the list (e.g. qwen3:8b).",
   "asystent.brak_ollamy": "Cannot connect to Ollama ({adres}): {opis}. Start Ollama and pull a model, e.g.: ollama pull qwen3:8b",
   "asystent.brak_opisu": "Enter a manufacturer, name or markings — there is nothing to search for.",
-  "asystent.brak_searxng": "Enter the address of your SearXNG instance (e.g. http://127.0.0.1:8080).",
+  "asystent.brak_searxng": "Enter the address of your SearXNG instance (e.g. http://127.0.0.1:8888).",
   "asystent.brak_wynikow": "The search found nothing for: {zapytanie}. Try a shorter query (e.g. just the chip marking).",
   "asystent.cytat": "Quote: {cytat}",
   "asystent.dopisek_opisu": "Data completed by the AI assistant ({model}) from:",

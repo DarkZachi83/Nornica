@@ -8,6 +8,6 @@ services:
     container_name: nornica-searxng
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8888:8080"    # 8888 na zewnątrz: 8080 często zajmuje Open WebUI
     volumes:
       - ./core-config:/etc/searxng:rw
