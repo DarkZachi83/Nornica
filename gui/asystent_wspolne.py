@@ -179,7 +179,13 @@ class PracaAsystenta:
         """cel NIE może odwoływać się do okna (self): gdy wątek skończy się ostatni,
         sprzątałby okno i jego zmienne tkintera poza wątkiem głównym — tkinter
         zgłasza wtedy „main thread is not in main loop” i blokuje się na sekundę
-        przy każdej zmiennej. Wątek dostaje kolejkę i gotowe wartości."""
+        przy każdej zmiennej. Wątek dostaje kolejkę i gotowe wartości.
+
+        Z tego samego powodu przed startem sprzątamy pamięć TU, w wątku głównym:
+        zamknięte wcześniej okna czekają na zbieracz cykli, a ten uruchamia się
+        w wątku, który akurat tworzy dużo obiektów — czyli w wątku asystenta."""
+        import gc
+        gc.collect()
         self._w_tle += 1
         threading.Thread(target=cel, name=nazwa, daemon=True).start()
         if self._w_tle == 1:                 # jedna pętla odbioru na wszystkie wątki
