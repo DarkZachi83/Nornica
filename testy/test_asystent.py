@@ -236,6 +236,15 @@ class TestWyszukiwarek(unittest.TestCase):
         with self.assertRaises(BladNornicy) as blad:
             SearXNG(s.adres).szukaj("x")
         self.assertEqual("asystent.searxng_bez_json", blad.exception.klucz)
+
+    def test_pod_adresem_inny_program(self):
+        """Open WebUI na 8080 odpowiada stroną WWW — to nie „SearXNG bez JSON”, tylko zły adres."""
+        for tresc, typ in ((b"<!doctype html><html></html>", "text/html"), (b'{"status": "ok"}', "application/json")):
+            s = self.serwer(lambda h, z, tresc=tresc, typ=typ: _json(h, tresc, typ=typ))
+            with self.subTest(typ=typ), self.assertRaises(BladNornicy) as blad:
+                SearXNG(s.adres).szukaj("x")
+            self.assertEqual("asystent.to_nie_searxng", blad.exception.klucz)
+            self.assertEqual(s.adres, blad.exception.pola["adres"])
         with self.assertRaises(BladNornicy):
             SearXNG("")
 
@@ -323,6 +332,23 @@ class TestPropozycji(unittest.TestCase):
                          pola["properties"]["technologia"]["properties"]["wartosc"]["enum"])
         self.assertEqual({"wartosc", "zrodlo", "cytat"}, set(pola["properties"]["pojemnosc"]["required"]))
 
+    def test_numery_czesci(self):
+        self.assertEqual(["GR400D64L3/512DC"], propozycje.numery("GOODRAM GR400D64L3/512DC sprawdź parametry"))
+        self.assertEqual(["KMM5321200AW-6", "KM44C4100CK-6"],
+                         propozycje.numery("KMM5321200AW-6", "KM44C4100CK-6, (8 szt. 1995)\nSEC 9512"))
+
+    def test_czy_zrodlo_mowi_o_tym_przedmiocie(self):
+        dopasuj = propozycje.dopasowanie
+        goodram = Strona("t", "u", "GOODRAM GR400D64L3/512 DDR 400 512MB single module")
+        self.assertEqual((propozycje.PODOBNE, "GR400D64L3/512"), dopasuj(goodram, ["GR400D64L3/512DC"]))
+        self.assertEqual((propozycje.PELNE, ""), dopasuj(goodram, ["GR400D64L3/512"]))
+        rodzina = Strona("t", "u", "Samsung KM44C4100C-6 Fast Page Mode")
+        self.assertEqual((propozycje.PODOBNE, "KM44C4100C-6"), dopasuj(rodzina, ["KM44C4100CK-6"]))
+        self.assertEqual((propozycje.BRAK, ""), dopasuj(Strona("t", "u", "Hyundai HY57V64"), ["KM44C4100CK-6"]))
+        self.assertEqual((propozycje.PELNE, ""), dopasuj(goodram, []))            # nic do sprawdzenia
+        self.assertEqual((propozycje.PELNE, ""), dopasuj(goodram, ["512"]))       # za krótkie
+        self.assertEqual((propozycje.PELNE, ""), dopasuj(Strona("t", "u", "km44c4100ck–6"), ["KM44C4100CK-6"]))
+
     def test_wycinek_zaczyna_sie_przy_przedmiocie(self):
         tekst = "menu " * 2000 + "KM44C4100 Fast Page Mode" + " stopka" * 500
         wycinek = propozycje.wycinek(tekst, ["km44c4100"], 1000)
@@ -366,6 +392,10 @@ class TestPropozycji(unittest.TestCase):
         self.assertIn("allowed: DRAM, FPM, EDO, SDRAM", polecenie)
         self.assertIn("[1] Wynik 1\nhttps://d.example/1", polecenie)
         self.assertIn("Polish", model.wiadomosci[0]["content"])
+        self.assertIn("kits of several modules", model.wiadomosci[0]["content"])
+        self.assertTrue(polecenie.endswith("write 'uwagi' in Polish."))
+        # karta opisuje rodzinę KM44C4100C, a przedmiot to KM44C4100CK-6 — podobne, nie pełne
+        self.assertEqual((propozycje.PODOBNE, "KM44C4100C"), (w["technologia"].dopasowanie, w["technologia"].podobne))
 
     def test_bez_wynikow_i_przerwanie(self):
         with self.assertRaises(BladNornicy) as blad:

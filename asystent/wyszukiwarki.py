@@ -232,7 +232,10 @@ class SearXNG:
                 raise BladNornicy("asystent.searxng_bez_json") from None
             raise
         except ValueError:
-            raise BladNornicy("asystent.searxng_bez_json") from None
+            # 200, ale nie JSON: pod adresem działa coś innego (np. Open WebUI na 8080)
+            raise BladNornicy("asystent.to_nie_searxng", adres=self.adres) from None
+        if not isinstance(wynik, dict) or "results" not in wynik:
+            raise BladNornicy("asystent.to_nie_searxng", adres=self.adres)
         return [Strona(w.get("title") or w["url"], w["url"], (w.get("content") or "")[:MAKS_TEKST])
                 for w in wynik.get("results", [])[:ile] if w.get("url")]
 
