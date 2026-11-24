@@ -66,6 +66,10 @@ The interface is available in English (**VOLE**) and Polish (**NORNICA**,
   spec values. Every suggestion has a source and a verbatim quote; the program
   itself checks that the quote is on the page and that the value fits the
   field. You tick what you accept — data goes into the form, not the database.
+  **Several items at once:** *File → AI assistant — several items…* — one
+  line per item (e.g. `Samsung KMM5322200AW-6 × 3`); after you review the
+  suggestions the program creates the models and, if you wish, the items in
+  a chosen location.
 - **Light and dark theme** — the ☀/☾ button in the toolbar or View menu;
   the choice is remembered. Sharp text on Windows with 125–150% scaling.
 - **Safe data** — SQLite with atomic, checksummed schema migrations and an

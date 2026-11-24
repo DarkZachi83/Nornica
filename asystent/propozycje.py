@@ -80,16 +80,25 @@ class Wynik:
 
 
 # ------------------------------------------------------------------- zapytanie
+# Słowa z cyframi, które NIE są numerami części: pojemności, standardy pamięci,
+# częstotliwości, czasy, liczby pinów, same liczby (rok, kod daty, ilość).
+_NIE_NUMER = re.compile(
+    r"^(\d{1,5}|\d+([.,]\d+)?\s*([kmgt]i?b|mb|gb|ns|mhz|ghz|v|w|pin|pins|piny|pinów|szt\.?)"
+    r"|\d+-?(pin|pins|piny|pinów)|pc\d?-?\d{3,5}[a-z]?|ddr\d?-?\d{3,4}|sdram-?\d+|cl\d+|[x×*]\d+)$", re.I)
+
+
 def numery(*teksty: str) -> list[str]:
     """Numery części z tekstów (słowa z cyfrą, min. 3 znaki), z pierwszej linii
-    każdego tekstu, bez dopisków w nawiasach i bez powtórzeń."""
+    każdego tekstu, bez dopisków w nawiasach i bez powtórzeń. Pomija parametry
+    (256, 16MB, PC3200, DDR-400, 184-pin, 60ns) — zapytanie ma szukać przedmiotu."""
     wynik: list[str] = []
     for tekst in teksty:
         tekst = (tekst or "").strip()
         linia = re.sub(r"\([^)]*\)", " ", tekst.splitlines()[0] if tekst else "")
         for slowo in linia.split():
             slowo = slowo.strip(",;:")
-            if re.search(r"\d", slowo) and len(slowo) >= 3 and slowo.casefold() not in {w.casefold() for w in wynik}:
+            if (re.search(r"\d", slowo) and len(slowo) >= 3 and not _NIE_NUMER.match(slowo)
+                    and slowo.casefold() not in {w.casefold() for w in wynik}):
                 wynik.append(slowo)
     return wynik
 
@@ -189,7 +198,9 @@ def wiadomosci(szablon: list[dict], dane: dict, zrodla: list[Strona], jezyk: str
         "e.g. GR400D64L3/512 instead of GR400D64L3/512DC): then say so in 'uwagi'. Part numbers ending "
         "with DC, K2 or KIT are kits of several modules and the capacity in the name is the total of the "
         "kit: give the capacity of ONE module. Copy the model name exactly as the source writes it, "
-        "never shorten it. "
+        "never shorten it. 'producent' and 'nazwa' describe the item itself (e.g. the memory MODULE), "
+        "not the chips on it: a module made by an unknown company with Hynix chips has an unknown "
+        "manufacturer — leave it empty and mention the chips in 'uwagi'. "
         f"Write 'uwagi' in {JEZYKI_ODPOWIEDZI.get(jezyk, 'English')}: one or two sentences about "
         "doubts, conflicting sources or what the user should check on the item.")
     uzytkownik = (

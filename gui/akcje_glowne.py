@@ -19,13 +19,13 @@ from uslugi import inwentarz
 class AkcjeGlowne:
     """Polecenia z menu, paska, skrótów i menu kontekstowego drzewa."""
 
-    def jedno_okno(self, klasa):
+    def jedno_okno(self, klasa, **opcje):
         """Okno, które ma istnieć tylko raz: ponowne wywołanie wyciąga istniejące na wierzch."""
         for okno in self._dialogi:
             if isinstance(okno, klasa) and okno.winfo_exists():
                 okno.lift()
                 return okno
-        okno = klasa(self)
+        okno = klasa(self, **opcje)
         okno.pokaz()
         return okno
 
@@ -91,6 +91,11 @@ class AkcjeGlowne:
                 else OknoPrzeniesienia(self, egz_id=egz_id))
         okno.pokaz()
         return okno
+
+    def asystent_ai(self, **opcje):
+        """Asystent AI dla kilku przedmiotów naraz (jedno okno); opcje — dla testów."""
+        from gui.okno_wsadowe import OknoWsadowe
+        return self.jedno_okno(OknoWsadowe, **opcje)
 
     def slowniki(self):
         """Słowniki (jedno okno)."""

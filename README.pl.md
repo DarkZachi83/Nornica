@@ -67,6 +67,10 @@ w trakcie pracy programu.
   wybiera wartości parametrów. Każda propozycja ma źródło i dosłowny cytat;
   program sam sprawdza, czy cytat jest na stronie i czy wartość pasuje do pola.
   Ty zaznaczasz, co przyjmujesz — dane trafiają do formularza, nie do bazy.
+  **Kilka przedmiotów naraz:** *Plik → Asystent AI — kilka przedmiotów…* —
+  jedna linia na przedmiot (np. `Samsung KMM5322200AW-6 × 3`), po przejrzeniu
+  propozycji program tworzy modele, a na życzenie także egzemplarze
+  w wybranej lokalizacji.
 - **Motyw jasny i ciemny** — przycisk ☀/☾ na pasku albo menu Widok;
   wybór jest zapamiętywany. Ostra czcionka na Windows przy skalowaniu 125–150%.
 - **Bezpieczne dane** — SQLite, atomowe migracje schematu z sumami
