@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from tkinter import messagebox, ttk
 
+from gui import styl
 from gui.bazowe import OknoDialogowe, pokaz_blad
 from gui.model_drzewa import iid_egzemplarza
 from i18n.tlumacz import nazwa, t
@@ -68,7 +69,7 @@ class OknoInwentaryzacji(OknoDialogowe):
             self._lista.column(kolumna, width=szerokosc, stretch=kolumna == "miejsce")
         self._lista.pack(fill="y", expand=True)
         self._lista.bind("<<TreeviewSelect>>", self._wybrano_sesje)
-        self._lista.tag_configure("w_toku", foreground="#7A5636")
+        self._lista.tag_configure("w_toku", foreground=styl.KOLORY["drewno"])
         przyciski_sesji = ttk.Frame(lewa)
         przyciski_sesji.pack(fill="x", pady=(6, 0))
         self._przyciski["usun"] = ttk.Button(przyciski_sesji, text=t("inw.usun"), command=self.usun_sesje)
@@ -94,8 +95,8 @@ class OknoInwentaryzacji(OknoDialogowe):
         przewijak.pack(side="right", fill="y")
         self._raport.pack(side="left", fill="both", expand=True)
         self._raport.tag_configure("grupa", font=self.glowne.czcionki["pogrubiona"])
-        self._raport.tag_configure("brak", foreground="#A23B2A")
-        self._raport.tag_configure("nie_na_miejscu", foreground="#A3641E")
+        self._raport.tag_configure("brak", foreground=styl.KOLORY_STATUSOW["uszkodzony"])
+        self._raport.tag_configure("nie_na_miejscu", foreground=styl.KOLORY_STATUSOW["w_naprawie"])
         self._raport.bind("<<TreeviewSelect>>", lambda _e: self._stan_przyciskow())
         self._raport.bind("<Double-1>", lambda _e: self.pokaz_egzemplarz())
         przyciski = ttk.Frame(prawa)

@@ -61,6 +61,8 @@ The interface is available in English (**VOLE**) and Polish (**NORNICA**,
 - **Backup to a single ZIP** (File → Backup…, Ctrl+B) — the database and all
   attached files, verified after writing; restore checks the whole backup first
   and keeps the current database aside before replacing it.
+- **Light and dark theme** — the ☀/☾ button in the toolbar or View menu;
+  the choice is remembered. Sharp text on Windows with 125–150% scaling.
 - **Safe data** — SQLite with atomic, checksummed schema migrations and an
   automatic backup before every upgrade.
 
@@ -89,6 +91,7 @@ Python builds).
 
     sudo pacman -S python tk python-pillow python-qrcode python-reportlab python-openpyxl python-cryptography
     pip install --user xlwt          # optional, legacy .xls export
+    pip install --user ttkbootstrap==2.2.7   # optional, modern look and dark theme
 
 **Debian / Ubuntu**
 

@@ -72,6 +72,13 @@ def _sprawdzenia(db, katalog: Path) -> list[tuple[str, object]]:
         from PIL import ImageTk  # noqa: F401 — miniatury zdjęć
         korzen = tk.Tk()
         korzen.withdraw()
+        # wygląd z ttkbootstrap: biblioteka i jej grafiki (znaczniki pól wyboru) muszą być w paczce
+        import ttkbootstrap
+        from ttkbootstrap.style import Style
+        if Style.instance is not None and Style.instance.master is not korzen:
+            Style.instance = None          # styl po innym (zamkniętym) oknie
+        Style().theme_use("bootstrap-dark")
+        ttkbootstrap.Checkbutton(korzen).destroy()
         obraz = tk.PhotoImage(file=str(Path(__file__).resolve().parents[1] / "zasoby" / "ikona_64.png"))
         assert obraz.width() == 64
         korzen.destroy()

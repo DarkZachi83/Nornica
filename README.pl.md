@@ -62,6 +62,8 @@ w trakcie pracy programu.
 - **Kopia zapasowa w jednym pliku ZIP** (Plik → Kopia zapasowa…, Ctrl+B) —
   baza i wszystkie podpięte pliki, sprawdzane po zapisie; przywracanie najpierw
   sprawdza całą kopię i odkłada obecną bazę na bok, zanim ją zastąpi.
+- **Motyw jasny i ciemny** — przycisk ☀/☾ na pasku albo menu Widok;
+  wybór jest zapamiętywany. Ostra czcionka na Windows przy skalowaniu 125–150%.
 - **Bezpieczne dane** — SQLite, atomowe migracje schematu z sumami
   kontrolnymi i automatyczną kopią zapasową przed każdą aktualizacją.
 
@@ -89,6 +91,7 @@ wydaniach Pythona).
 
     sudo pacman -S python tk python-pillow python-qrcode python-reportlab python-openpyxl python-cryptography
     pip install --user xlwt          # opcjonalnie, eksport do starego .xls
+    pip install --user ttkbootstrap==2.2.7   # opcjonalnie, nowy wygląd i motyw ciemny
 
 Pakiet `tk` jest potrzebny dla tkintera — w Arch nie instaluje się razem
 z Pythonem.

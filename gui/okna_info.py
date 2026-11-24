@@ -34,14 +34,15 @@ class EkranPowitalny(tk.Toplevel):
             obraz = obraz.subsample(2)
             self._pomniejszony = obraz          # referencja: inaczej tkinter zgubi obraz
         tk.Label(self, image=obraz, borderwidth=0).pack()
-        pasek = tk.Frame(self, background=styl.KOLORY["tusz"], padx=18, pady=12)
+        kolory = styl.EKRAN_POWITALNY          # stały wygląd, niezależny od motywu
+        pasek = tk.Frame(self, background=kolory["pasek"], padx=18, pady=12)
         pasek.pack(fill="x")
         tk.Label(pasek, text=t("aplikacja.nazwa"), font=glowne.czcionki["naglowek"],
-                 foreground=styl.KOLORY["panel"], background=styl.KOLORY["tusz"]).pack(side="left")
-        tk.Label(pasek, text=t("aplikacja.opis"), foreground=styl.KOLORY["przygaszony"],
-                 background=styl.KOLORY["tusz"]).pack(side="left", padx=(14, 0), pady=(6, 0))
-        tk.Label(pasek, text=WERSJA, foreground=styl.KOLORY["przygaszony"],
-                 background=styl.KOLORY["tusz"]).pack(side="right", pady=(6, 0))
+                 foreground=kolory["napis"], background=kolory["pasek"]).pack(side="left")
+        tk.Label(pasek, text=t("aplikacja.opis"), foreground=kolory["opis"],
+                 background=kolory["pasek"]).pack(side="left", padx=(14, 0), pady=(6, 0))
+        tk.Label(pasek, text=WERSJA, foreground=kolory["opis"],
+                 background=kolory["pasek"]).pack(side="right", pady=(6, 0))
         self.update_idletasks()
         x = (self.winfo_screenwidth() - self.winfo_reqwidth()) // 2
         y = (self.winfo_screenheight() - self.winfo_reqheight()) // 2

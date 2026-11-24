@@ -15,6 +15,7 @@ from tkinter import messagebox, ttk
 from baza import enumy
 from baza.repozytoria import egzemplarze
 from baza.repozytoria.egzemplarze import nazwa_wyswietlana
+from gui import styl
 from gui.bazowe import OknoDialogowe, pokaz_blad
 from gui.model_drzewa import iid_egzemplarza, iid_lokalizacji
 from i18n.tlumacz import nazwa, t
@@ -122,7 +123,7 @@ class OknoPorzadkow(OknoDialogowe):
         self._kontrole.pack(side="left", fill="y")
         self._kontrole.bind("<<TreeviewSelect>>", self._wybrano_kontrole)
         self._kontrole.tag_configure("grupa", font=self.glowne.czcionki["pogrubiona"])
-        self._kontrole.tag_configure("pusta", foreground="#8A857A")
+        self._kontrole.tag_configure("pusta", foreground=styl.KOLORY["wyszarzony"])
 
         prawa = ttk.Frame(srodek, padding=(14, 0, 0, 0))
         prawa.pack(side="left", fill="both", expand=True)

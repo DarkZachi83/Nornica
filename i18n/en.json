@@ -352,6 +352,8 @@
   "mobilny.zdjecie_zly_typ": "This is not a photo (JPEG, PNG, HEIC, WebP or GIF).",
   "mobilny.zly_klucz": "This pairing code is no longer valid. Scan the code shown in the program again.",
   "mobilny.zrob_zdjecie": "Take a photo",
+  "motyw.ciemny": "Dark theme",
+  "motyw.jasny": "Light theme",
   "ogolne.nie": "No",
   "ogolne.tak": "Yes",
   "okno.blad": "Error",

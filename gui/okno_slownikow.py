@@ -12,6 +12,7 @@ from tkinter import messagebox, ttk
 
 from baza.repozytoria import slowniki
 from baza.repozytoria.slowniki import klucz_kolejnosci
+from gui import styl
 from gui.bazowe import OknoDialogowe, pokaz_blad
 from gui.okna_slownikow import (OknoKategorii, OknoPola, OknoStatusu, OknoWartosci,
                                  opcje_typow)
@@ -96,7 +97,7 @@ class OknoSlownikow(OknoDialogowe):
         self._pola.pack(fill="both", expand=True, pady=(4, 0))
         self._pola.bind("<<TreeviewSelect>>", self._wybrano_pole)
         self._pola.bind("<Double-1>", lambda _e: self.edytuj_pole())
-        self._pola.tag_configure("cudze", foreground="#8A857A")
+        self._pola.tag_configure("cudze", foreground=styl.KOLORY["wyszarzony"])
         przyciski_pol = ttk.Frame(prawa)
         przyciski_pol.pack(fill="x", pady=(6, 0))
         for kod, tekst, polecenie in (("pole_nowe", t("slowniki.dodaj_pole"), self.dodaj_pole),
