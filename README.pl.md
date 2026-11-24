@@ -62,6 +62,11 @@ w trakcie pracy programu.
 - **Kopia zapasowa w jednym pliku ZIP** (Plik → Kopia zapasowa…, Ctrl+B) —
   baza i wszystkie podpięte pliki, sprawdzane po zapisie; przywracanie najpierw
   sprawdza całą kopię i odkłada obecną bazę na bok, zanim ją zastąpi.
+- **Asystent AI** (okno modelu → *Asystent AI…*) — wpisujesz oznaczenia
+  z kości albo naklejki, asystent szuka w internecie, a lokalny model (Ollama)
+  wybiera wartości parametrów. Każda propozycja ma źródło i dosłowny cytat;
+  program sam sprawdza, czy cytat jest na stronie i czy wartość pasuje do pola.
+  Ty zaznaczasz, co przyjmujesz — dane trafiają do formularza, nie do bazy.
 - **Motyw jasny i ciemny** — przycisk ☀/☾ na pasku albo menu Widok;
   wybór jest zapamiętywany. Ostra czcionka na Windows przy skalowaniu 125–150%.
 - **Bezpieczne dane** — SQLite, atomowe migracje schematu z sumami
@@ -123,6 +128,27 @@ tylko odpowiednia funkcja (z komunikatem dlaczego).
     python nornica.py --bez-powitania  # bez ekranu powitalnego
     python nornica.py --konsola        # tylko przygotowanie bazy i podsumowanie
 
+## Asystent AI (opcjonalnie)
+
+Nornica działa bez niego; przycisk *Asystent AI…* mówi wtedy, czego brakuje.
+
+1. Zainstaluj [Ollamę](https://ollama.com/download) i pobierz model, np.
+   `ollama pull qwen3:8b` (≈5 GB, wygodnie mieści się w karcie z 8 GB VRAM;
+   lżejszy: `gemma3:4b`). Model działa tylko na Twoim komputerze — program
+   łączy się wyłącznie z adresem 127.0.0.1.
+2. Wybierz wyszukiwarkę w oknie asystenta:
+   - **Ollama web search** — darmowe konto na ollama.com i klucz API
+     (ustawienia konta → *Keys*). Do Ollamy trafia samo zapytanie, np.
+     „KM44C4100 datasheet”. Klucz jest w pliku `ollama_klucz.txt` w folderze
+     danych (tylko dla właściciela) albo w zmiennej `OLLAMA_API_KEY` —
+     nie w bazie i nie w kopiach zapasowych.
+   - **SearXNG** — własna wyszukiwarka, np. w Dockerze; w `settings.yml`
+     dopisz `json` do `search: formats`.
+
+Małe modele potrafią zmyślać, dlatego wartości bez potwierdzonego cytatu
+są oznaczone jako niepotwierdzone i nie są zaznaczane. Typ pamięci (FPM czy
+EDO) zwykle wynika z oznaczeń kości — przepisz je do pola *Oznaczenia*.
+
 ## Gdzie są Twoje dane
 
 Baza, kopie zapasowe, zdjęcia i certyfikaty **nigdy nie trafiają do folderu
@@ -143,7 +169,7 @@ w `kopie/` w folderze danych).
     pip install -r requirements-dev.txt
     xvfb-run -a -s "-screen 0 1920x1080x24" python -m unittest discover -s testy -t .
 
-Około 470 testów: baza, migracje, reguły biznesowe, zgodność kluczy
+Około 510 testów: baza, migracje, reguły biznesowe, zgodność kluczy
 tłumaczeń (EN/PL), etykiety PDF (odczytywane z powrotem przez zbar), serwer
 dla telefonu, parser The Retro Web (na zapisanych stronach) i interfejs.
 Bez ekranu testy interfejsu są pomijane. GitHub Actions uruchamia je przy
@@ -164,6 +190,7 @@ czyta gotowe pliki PNG, więc do startu Pillow nie jest potrzebne.
     wyjatki.py           wyjątki niosące klucze tłumaczeń
     baza/                SQLite: migracje schematu, połączenie, repozytoria, dane startowe
     uslugi/              reguły biznesowe: inwentarz, etykiety, eksport, serwer skanera, The Retro Web
+    asystent/            asystent AI: Ollama, wyszukiwarki, sprawdzanie propozycji
     gui/                 okna tkinter
     raporty/             eksport do plików
     i18n/                tlumacz.py, en.json, pl.json

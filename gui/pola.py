@@ -369,6 +369,11 @@ class FormularzAtrybutow:
         for kod in self.pola:
             self._odswiez_podpowiedz(kod)
 
+    def tekst_pola(self, opis: dict) -> str:
+        """Bieżący tekst pola (np. do porównania z propozycją asystenta)."""
+        self._pole(opis)
+        return self._odczyt(opis["kod"])
+
     def wstaw(self, szablon: list[dict], wartosci: dict, nadpisz: bool = False) -> list[str]:
         """Wartości z zewnątrz (np. The Retro Web) do pól formularza. Pola już
         wypełnione zostają, chyba że nadpisz=True. Zwraca kody wstawionych pól."""

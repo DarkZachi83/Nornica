@@ -71,6 +71,7 @@ class OknoModelu(OknoDialogowe):
             if pole == "zrodlo_url":               # pole adresu + przycisk w jednej kolumnie
                 wiersz = ttk.Frame(ogolne)
                 wiersz.grid(row=r, column=1, sticky="we", pady=3)
+                ttk.Button(wiersz, text=t("asystent.przycisk"), command=self.asystent).pack(side="right", padx=(6, 0))
                 ttk.Button(wiersz, text=t("trw.przycisk"), command=self.retroweb).pack(side="right", padx=(6, 0))
                 ttk.Entry(wiersz, textvariable=self.v[pole]).pack(side="left", fill="x", expand=True)
             else:
@@ -114,6 +115,48 @@ class OknoModelu(OknoDialogowe):
         zrodlo = p.opis.splitlines()[0]
         if zrodlo not in opis:                     # ponowny import nie dubluje dopisku
             self.opis.ustaw(f"{opis}\n\n{p.opis}" if opis else p.opis)
+
+    # ---------------------------------------------------------- asystent AI
+    def asystent(self, **opcje):
+        """Okno asystenta dla bieżącej kategorii; opcje (fabryka, lista_modeli) — dla testów."""
+        from gui.okno_asystenta import OknoAsystenta
+        from i18n.tlumacz import nazwa
+        if not self.kategoria.wartosc:
+            pokaz_blad(self, BladNornicy("asystent.wybierz_kategorie"))
+            return None
+        kategoria = slowniki.kategoria(self.db, self.kategoria.wartosc)
+        dane = {"kategoria": nazwa(kategoria["nazwy"]), "producent": self.producent.get().strip(),
+                "nazwa": self.v["nazwa"].get().strip(), "oznaczenia": self.v["numer_czesci"].get().strip()}
+        okno = OknoAsystenta(self.glowne, slowniki.szablon(self.db, self.kategoria.wartosc), dane,
+                             self._obecne_wartosci, self.zastosuj_asystenta, **opcje)
+        okno.pokaz()
+        return okno
+
+    def _obecne_wartosci(self) -> dict:
+        from asystent.propozycje import NAZWA, PRODUCENT
+        wynik = {PRODUCENT: self.producent.get().strip(), NAZWA: self.v["nazwa"].get().strip()}
+        for opis in slowniki.szablon(self.db, self.kategoria.wartosc):
+            wynik[opis["kod"]] = self.atrybuty.tekst_pola(opis)
+        return wynik
+
+    def zastosuj_asystenta(self, wynik, kody: set[str], nadpisz: bool = False) -> None:
+        """Zaznaczone propozycje do FORMULARZA (zapis dopiero przyciskiem „Zapisz”).
+        Źródła trafiają do opisu modelu, żeby było wiadomo, skąd są dane."""
+        from asystent.propozycje import NAZWA, PRODUCENT
+        for kod, zmienna in ((PRODUCENT, self.producent), (NAZWA, self.v["nazwa"])):
+            w = wynik.wartosc(kod)
+            if kod in kody and w is not None and w.mozna_wstawic and (nadpisz or not zmienna.get().strip()):
+                zmienna.set(w.tekst)
+        self.atrybuty.wstaw(slowniki.szablon(self.db, self.kategoria.wartosc), wynik.atrybuty(kody), nadpisz)
+        adresy = list(dict.fromkeys(w.zrodlo.adres for w in wynik.wartosci
+                                    if w.kod in kody and w.zrodlo is not None))
+        if adresy and not self.v["zrodlo_url"].get().strip():
+            self.v["zrodlo_url"].set(adresy[0])
+        opis = self.opis.zapamietaj().rstrip()
+        nowe = [a for a in adresy if a not in opis]
+        if nowe:
+            dopisek = t("asystent.dopisek_opisu", model=wynik.model) + "\n" + "\n".join(nowe)
+            self.opis.ustaw(f"{opis}\n\n{dopisek}" if opis else dopisek)
 
     def _zbuduj_parametry(self) -> None:
         if hasattr(self, "_parametry") and self._parametry.winfo_exists():

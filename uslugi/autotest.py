@@ -5,7 +5,7 @@ Uruchamiane przez GitHub Actions na zbudowanej paczce dla Windows, zanim
 trafi do wydania. Testy jednostkowe sprawdzają kod; to sprawdza PACZKĘ:
 czy PyInstaller zabrał wszystkie biblioteki i pliki danych, które ładują się
 dopiero przy użyciu danej funkcji (kody QR, etykiety PDF, eksport do Excela,
-certyfikat skanera, kopia zapasowa, okno tkinter).
+certyfikat skanera, kopia zapasowa, okno tkinter, asystent AI bez sieci).
 
 Działa na osobnym, tymczasowym folderze danych — kolekcja użytkownika nie
 jest otwierana. Okienkowy program nie ma konsoli, więc raport trafia do pliku.
@@ -87,9 +87,19 @@ def _sprawdzenia(db, katalog: Path) -> list[tuple[str, object]]:
         from uslugi.serwer_mobilny import KATALOG_WWW
         assert (KATALOG_WWW / "skaner.html").is_file() and (KATALOG_WWW / "jsQR.js").is_file()
 
+    def asystent_ai():
+        # bez sieci i bez Ollamy: moduły w paczce, schemat odpowiedzi, sprawdzanie wartości
+        from asystent import ollama, propozycje, wyszukiwarki
+        from baza.repozytoria import slowniki
+        szablon = slowniki.szablon(db, slowniki.kategoria_po_kodzie(db, "pamieci_ram")["id"])
+        assert "technologia" in propozycje.schemat(szablon)["properties"]["pola"]["properties"]
+        assert wyszukiwarki.html_na_tekst("<p>Fast Page Mode</p>") == "Fast Page Mode"
+        assert ollama.sprawdz_adres(None) == ollama.ADRES_DOMYSLNY
+
     return [("kody QR", qr), ("etykiety PDF", etykiety_pdf), ("eksport CSV/XLSX/XLS/HTML", eksport),
             ("certyfikat skanera", certyfikat), ("kopia zapasowa ZIP", kopia_zapasowa),
-            ("okno tkinter i obrazy", okno), ("strona dla telefonu", strona_telefonu)]
+            ("okno tkinter i obrazy", okno), ("strona dla telefonu", strona_telefonu),
+            ("asystent AI (bez sieci)", asystent_ai)]
 
 
 def uruchom(plik_raportu: str | Path) -> int:
