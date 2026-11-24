@@ -84,6 +84,8 @@ class TestOknaAsystenta(test_gui.TestPrzebudowy):
 
     def test_ustawienia_zapamietane_klucz_poza_baza(self):
         okno = self.asystent()
+        self.assertEqual("searxng", okno.zrodlo.get())          # darmowa wyszukiwarka domyślnie
+        okno.zrodlo.set("ollama")
         okno.model.set("gemma3:4b")
         okno.klucz.set("klucz-123")
         okno.uruchom()

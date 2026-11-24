@@ -1,0 +1,19 @@
+# Ustawienia SearXNG dla asystenta AI Nornicy. Trafia do core-config/settings.yml.
+# use_default_settings: wszystko inne zostaje domyślne.
+use_default_settings: true
+
+general:
+  instance_name: "SearXNG (Nornica)"
+
+server:
+  # Przed pierwszym uruchomieniem zamień na losowy klucz:
+  #   sed -i "s|ZMIEN_MNIE|$(openssl rand -hex 32)|" core-config/settings.yml
+  secret_key: "ZMIEN_MNIE"
+  limiter: false          # instancja tylko dla Ciebie — bez ochrony przed botami (nie wymaga Valkey)
+  image_proxy: false
+
+search:
+  safe_search: 0
+  formats:                # json — tego potrzebuje Nornica (bez niego SearXNG odpowiada 403)
+    - html
+    - json

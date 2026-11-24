@@ -1,0 +1,13 @@
+# SearXNG dla asystenta AI Nornicy — wyszukiwarka uruchamiana u siebie.
+# Instrukcja: README, sekcja „Asystent AI”. Skopiuj ten folder POZA repozytorium,
+# np. do ~/searxng, i uruchom tam:  docker compose up -d
+# Port wystawiony tylko na tym komputerze (127.0.0.1) — nikt z sieci się nie podłączy.
+services:
+  searxng:
+    image: docker.io/searxng/searxng:latest
+    container_name: nornica-searxng
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8888:8080"    # 8888 na zewnątrz: 8080 często zajmuje Open WebUI
+    volumes:
+      - ./core-config:/etc/searxng:rw
