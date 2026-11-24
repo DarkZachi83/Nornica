@@ -78,6 +78,7 @@
   "asystent.limit_wyszukiwania": "Ollama web search odmówiła wyszukania ({opis}). Wyszukiwanie w Ollamie wymaga teraz płatnych kredytów albo subskrypcji. Darmowa droga: SearXNG u siebie — instrukcja w README, sekcja „Asystent AI”.",
   "asystent.model": "Model AI (Ollama)",
   "asystent.modele_ollamy": "Ollama działa, modeli: {ile}.",
+  "asystent.nazwa_innego_produktu": "nazwa innego produktu — nie zawiera oznaczenia",
   "asystent.niepotwierdzona": "niepotwierdzona — sprawdź",
   "asystent.odswiez_modele": "Odśwież",
   "asystent.oznaczenia": "Oznaczenia, opis",

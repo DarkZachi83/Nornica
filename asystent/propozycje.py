@@ -31,6 +31,7 @@ ZNAKOW_ZE_STRONY = 4000           # 3 strony × 4000 znaków ≈ 3–4 tys. toke
 MAKS_CYTAT = 300
 PRODUCENT, NAZWA = "model.producent", "model.nazwa"     # pola ogólne modelu (kropka: nie koliduje z kodami pól)
 PELNE, PODOBNE, BRAK = "pelne", "podobne", "brak"         # dopasowanie źródła do oznaczeń przedmiotu
+INNA_NAZWA = "inna_nazwa"        # nazwa ze źródła nie zawiera żadnego oznaczenia przedmiotu
 
 JEZYKI_ODPOWIEDZI = {"pl": "Polish", "en": "English"}
 OPISY_TYPOW = {
@@ -84,7 +85,8 @@ class Wynik:
 # częstotliwości, czasy, liczby pinów, same liczby (rok, kod daty, ilość).
 _NIE_NUMER = re.compile(
     r"^(\d{1,5}|\d+([.,]\d+)?\s*([kmgt]i?b|mb|gb|ns|mhz|ghz|v|w|pin|pins|piny|pinów|szt\.?)"
-    r"|\d+-?(pin|pins|piny|pinów)|pc\d?-?\d{3,5}[a-z]?|ddr\d?-?\d{3,4}|sdram-?\d+|cl\d+|[x×*]\d+)$", re.I)
+    r"|\d+-?(pin|pins|piny|pinów)|pc\d?-?\d{3,5}[a-z]?|ddr\d?-?\d{3,4}|sdram-?\d+|cl\d+|[x×*]\d+"
+    r"|\d+[kmg]([x×]\d+)?|\d+-?bit(s|ów|owe?)?)$", re.I)       # organizacja kości: 32M, 4Mx16, 8-bit
 
 
 def numery(*teksty: str) -> list[str]:
@@ -292,6 +294,17 @@ def _wartosc(kod: str, etykieta: str, opis: dict | None, surowe, zrodla: list[St
                    zrodlo, cytat, potwierdzony(cytat, zrodlo), blad, dopasowane, podobne)
 
 
+def _nazwa_innego_produktu(nazwa_: str, oznaczenia: list[str]) -> bool:
+    """Strona o module Kingstona na kościach Hynixa wymienia oznaczenie kości, ale jej
+    nazwa (KVR400X64C3A/256) to nazwa INNEGO produktu. Nazwa jest „nasza”, gdy zawiera
+    któreś z oznaczeń przedmiotu albo sama się w nim zawiera."""
+    oznaczenia = [_normalizuj(o) for o in oznaczenia if len(o) >= 5]
+    if not oznaczenia:
+        return False
+    nazwa_ = _normalizuj(nazwa_)
+    return not any(o in nazwa_ or (len(nazwa_) >= 5 and nazwa_ in o) for o in oznaczenia)
+
+
 def opracuj(odpowiedz: dict, szablon: list[dict], zrodla: list[Strona],
             oznaczenia: list[str] | None = None) -> list[Wartosc]:
     """Odpowiedź modelu -> lista sprawdzonych propozycji w kolejności formularza.
@@ -299,8 +312,10 @@ def opracuj(odpowiedz: dict, szablon: list[dict], zrodla: list[Strona],
     from i18n.tlumacz import nazwa, t
     odpowiedz = odpowiedz if isinstance(odpowiedz, dict) else {}
     zgodnosc = {z.adres: dopasowanie(z, oznaczenia or []) for z in zrodla}
-    wynik = [_wartosc(PRODUCENT, t("pole.producent"), None, odpowiedz.get("producent"), zrodla, zgodnosc),
-             _wartosc(NAZWA, t("pole.nazwa_modelu"), None, odpowiedz.get("nazwa"), zrodla, zgodnosc)]
+    nazwa_ = _wartosc(NAZWA, t("pole.nazwa_modelu"), None, odpowiedz.get("nazwa"), zrodla, zgodnosc)
+    if nazwa_ is not None and _nazwa_innego_produktu(nazwa_.tekst, oznaczenia or []):
+        nazwa_.dopasowanie = INNA_NAZWA
+    wynik = [_wartosc(PRODUCENT, t("pole.producent"), None, odpowiedz.get("producent"), zrodla, zgodnosc), nazwa_]
     pola = odpowiedz.get("pola") if isinstance(odpowiedz.get("pola"), dict) else {}
     for opis in szablon:
         etykieta = nazwa(opis["nazwy"]) + (f" [{opis['jednostka']}]" if opis.get("jednostka") else "")

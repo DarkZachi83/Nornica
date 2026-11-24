@@ -78,6 +78,7 @@
   "asystent.limit_wyszukiwania": "Ollama web search refused the search ({opis}). Ollama now requires paid credits or a subscription for web search. Free alternative: your own SearXNG — see the “AI assistant” section of the README.",
   "asystent.model": "AI model (Ollama)",
   "asystent.modele_ollamy": "Ollama is running, models: {ile}.",
+  "asystent.nazwa_innego_produktu": "name of another product — lacks the marking",
   "asystent.niepotwierdzona": "unconfirmed — verify",
   "asystent.odswiez_modele": "Refresh",
   "asystent.oznaczenia": "Markings, notes",

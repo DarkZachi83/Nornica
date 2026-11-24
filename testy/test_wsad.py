@@ -32,6 +32,25 @@ class TestLinii(BazaTestowa):
         self.assertEqual(["71.61323.010"], propozycje.numery("Apacer 71.61323.010 512MB 184-pin 60ns PC133 CL3 1998"))
         self.assertEqual("HY5DU56822BT-D43 datasheet",
                          propozycje.zapytanie("", "", "256 MB DDR-400 PC3200, Hynix HY5DU56822BT-D43"))
+        self.assertEqual("HY5DU56822BT-D43 datasheet", propozycje.zapytanie(
+            "", "", "Moduł Ram z kością pamięci Hynix HY5DU56822BT-D43 32M × 8-bit łączna pamięć 256 MB"))
+        self.assertEqual(["TC5118165BJ-60"], propozycje.numery("TC5118165BJ-60 1Mx16 4Mx4 x16 16-bit"))
+
+    def test_nazwa_innego_produktu_na_tych_samych_kosciach(self):
+        """Strona o module Kingstona wymienia kości Hynixa — ale nazwa KVR… nie jest nazwą przedmiotu."""
+        from asystent.propozycje import INNA_NAZWA, PELNE
+        from gui.asystent_wspolne import domyslnie_zaznaczona
+        zrodlo = Strona("KVR", "https://k.example/1", "Kingston KVR400X64C3A/256 uses Hynix HY5DU56822BT-D43, single sided")
+        odpowiedz = {"nazwa": {"wartosc": "KVR400X64C3A/256", "zrodlo": 1, "cytat": "KVR400X64C3A/256"},
+                     "pola": {"strony": {"wartosc": "SS", "zrodlo": 1, "cytat": "single sided"}}}
+        szablon = slowniki.szablon(self.db, slowniki.kategoria_po_kodzie(self.db, "pamieci_ram")["id"])
+        w = {x.kod: x for x in propozycje.opracuj(odpowiedz, szablon, [zrodlo], ["HY5DU56822BT-D43"])}
+        self.assertEqual((INNA_NAZWA, True), (w[NAZWA].dopasowanie, w[NAZWA].potwierdzona))
+        self.assertFalse(domyslnie_zaznaczona(w[NAZWA]))
+        self.assertEqual(PELNE, w["strony"].dopasowanie)          # parametr z tej strony — bez zmian
+        nasza = propozycje.opracuj({"nazwa": {"wartosc": "HY5DU56822BT-D43", "zrodlo": 1, "cytat": "x"}},
+                                   szablon, [zrodlo], ["HY5DU56822BT-D43"])
+        self.assertEqual(PELNE, nasza[0].dopasowanie)
 
 
 def _wynik(tekst_zrodla="KMM5322200AW-6 Fast Page Mode 16MB", **wartosci):

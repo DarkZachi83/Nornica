@@ -18,7 +18,7 @@ from tkinter import ttk
 
 from asystent import wyszukiwarki
 from asystent.ollama import Ollama
-from asystent.propozycje import BRAK, PELNE, PODOBNE, Asystent
+from asystent.propozycje import BRAK, INNA_NAZWA, PELNE, PODOBNE, Asystent
 from baza.repozytoria import ustawienia
 from i18n.tlumacz import t
 from wyjatki import BladNornicy
@@ -46,6 +46,8 @@ def ocena(w, obecna: str = "") -> tuple[str, bool]:
     Kolejność: najpierw to, co dyskwalifikuje, potem porównanie z formularzem."""
     if w.blad:
         return t(w.blad), True
+    if w.dopasowanie == INNA_NAZWA:
+        return t("asystent.nazwa_innego_produktu"), True
     if w.zrodlo is not None and w.dopasowanie == BRAK:
         return t("asystent.zrodlo_bez_oznaczenia"), True
     if w.zrodlo is not None and w.dopasowanie == PODOBNE:
