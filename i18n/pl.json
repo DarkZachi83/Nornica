@@ -73,6 +73,7 @@
   "asystent.krok_sprawdzam": "Sprawdzam odpowiedź…",
   "asystent.krok_start": "Przygotowuję…",
   "asystent.krok_szukam": "Szukam: {zapytanie}",
+  "asystent.limit_wyszukiwania": "Ollama web search odmówiła wyszukania ({opis}). Zwykle to wyczerpany limit darmowego konta albo konto wymagające potwierdzenia na ollama.com — sprawdź ustawienia konta. W tym czasie możesz użyć SearXNG.",
   "asystent.model": "Model AI (Ollama)",
   "asystent.modele_ollamy": "Ollama działa, modeli: {ile}.",
   "asystent.niepotwierdzona": "niepotwierdzona — sprawdź",

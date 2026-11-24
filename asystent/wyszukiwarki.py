@@ -98,11 +98,34 @@ def _otworz(adres: str, dane: dict | None = None, naglowki: dict | None = None, 
     try:
         return otwieracz.open(zapytanie, timeout=czas)
     except urllib.error.HTTPError as blad:
+        opis = f"HTTP {blad.code}"
+        wyjasnienie = _tresc_bledu(blad)
+        if wyjasnienie:
+            opis += f": {wyjasnienie}"
         if blad.code in (401, 403):
-            raise BladNornicy("asystent.blad_klucza", opis=f"HTTP {blad.code}") from None
-        raise BladNornicy("asystent.blad_sieci", opis=f"HTTP {blad.code}") from None
+            raise BladNornicy("asystent.blad_klucza", opis=opis) from None
+        if blad.code in (402, 429):              # limit konta wyczerpany / za często
+            raise BladNornicy("asystent.limit_wyszukiwania", opis=opis) from None
+        raise BladNornicy("asystent.blad_sieci", opis=opis) from None
     except (urllib.error.URLError, OSError) as blad:
         raise BladNornicy("asystent.blad_sieci", opis=str(getattr(blad, "reason", blad))) from None
+
+
+def _tresc_bledu(blad) -> str:
+    """Wyjaśnienie, które serwer wysłał z błędem ({"error": "..."} albo krótki tekst)."""
+    try:
+        tresc = blad.read(2000).decode("utf-8", "replace").strip()
+    except Exception:   # noqa: BLE001
+        return ""
+    try:
+        dane = json.loads(tresc)
+        if isinstance(dane, dict):
+            tresc = str(dane.get("error") or dane.get("message") or "")
+    except ValueError:
+        pass
+    if tresc.lstrip().startswith("<"):           # strona HTML zamiast komunikatu
+        return ""
+    return " ".join(tresc.split())[:200]
 
 
 class _Tekst(HTMLParser):

@@ -201,6 +201,20 @@ class TestWyszukiwarek(unittest.TestCase):
             OllamaWeb()                      # brak klucza w zmiennej i w pliku
         self.assertEqual("asystent.brak_klucza", blad.exception.klucz)
 
+    def test_limit_konta_z_wyjasnieniem_serwera(self):
+        s = self.serwer(lambda h, z: _json(h, {"error": "weekly web search limit reached"}, 402))
+        with self.assertRaises(BladNornicy) as blad:
+            OllamaWeb("k1", s.adres).szukaj("x")
+        self.assertEqual("asystent.limit_wyszukiwania", blad.exception.klucz)
+        self.assertEqual("HTTP 402: weekly web search limit reached", blad.exception.pola["opis"])
+        s2 = self.serwer(lambda h, z: _json(h, b"<html>error</html>", 500, "text/html"))
+        with self.assertRaises(BladNornicy) as blad:
+            OllamaWeb("k1", s2.adres).szukaj("x")
+        self.assertEqual(("asystent.blad_sieci", "HTTP 500"), (blad.exception.klucz, blad.exception.pola["opis"]))
+        with self.assertRaises(BladNornicy) as blad:
+            OllamaWeb()
+        self.assertEqual("asystent.brak_klucza", blad.exception.klucz)
+
     def test_searxng_i_pobieranie_stron(self):
         def obsluga(h, z):
             if z["sciezka"].startswith("/search"):

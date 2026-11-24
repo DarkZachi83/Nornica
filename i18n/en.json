@@ -73,6 +73,7 @@
   "asystent.krok_sprawdzam": "Checking the answer…",
   "asystent.krok_start": "Preparing…",
   "asystent.krok_szukam": "Searching: {zapytanie}",
+  "asystent.limit_wyszukiwania": "Ollama web search refused the search ({opis}). Usually the free account limit is used up or the account needs confirming on ollama.com — check your account settings. Meanwhile you can use SearXNG.",
   "asystent.model": "AI model (Ollama)",
   "asystent.modele_ollamy": "Ollama is running, models: {ile}.",
   "asystent.niepotwierdzona": "unconfirmed — verify",
