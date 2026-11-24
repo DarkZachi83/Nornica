@@ -233,3 +233,58 @@ class TestOknaWsadowego(test_gui.TestPrzebudowy):
         okno.czekaj_na_wynik()
         self.assertFalse(okno.pracuje)
         self.assertEqual("asystent.przerwano", okno.blad.klucz)
+
+
+class TestZestawowIList(BazaTestowa):
+    """Kingston KVR400X64C3AK2/1G: zestaw 2 × 512 MB, strona mówi „1GB” i „DDR SDRAM”."""
+
+    def setUp(self):
+        super().setUp()
+        ustaw_jezyk("pl")
+        self.addCleanup(ustaw_jezyk, "en")
+        self.szablon = slowniki.szablon(self.db, slowniki.kategoria_po_kodzie(self.db, "pamieci_ram")["id"])
+        self.zrodlo = Strona("Kingston", "https://k.example/1",
+                             "Kingston KVR400X64C3AK2/1G 1GB (2 x 512MB) DDR SDRAM DDR400 PC3200 CL3", True)
+
+    def test_ile_sztuk_w_zestawie(self):
+        for tekst, sztuk in (("KVR400X64C3AK2/1G", 2), ("KVR400X64C3AK4/2G", 4), ("GR400D64L3/512DC", 2),
+                             ("GR400D64L3/1GDC", 2), ("1G KIT OF 2", 2), ("Corsair 2x512MB", 2),
+                             ("KVR400X64C3A/512", 1), ("KM44C4100CK-6", 1), ("", 1)):
+            with self.subTest(tekst=tekst):
+                self.assertEqual(sztuk, propozycje.sztuk_w_zestawie(tekst))
+
+    def test_pojemnosc_przeliczona_i_niejednoznaczna_technologia(self):
+        from gui.asystent_wspolne import domyslnie_zaznaczona, ocena
+        odpowiedz = {"pola": {"pojemnosc": {"wartosc": "1 GB", "zrodlo": 1, "cytat": "1GB"},
+                              "technologia": {"wartosc": "SDRAM", "zrodlo": 1, "cytat": "DDR SDRAM"},
+                              "parzystosc": {"wartosc": "none", "zrodlo": 1, "cytat": "PC3200"}}}
+        w = {x.kod: x for x in propozycje.opracuj(odpowiedz, self.szablon, [self.zrodlo], ["KVR400X64C3AK2/1G"])}
+        self.assertEqual((512 * 2 ** 20, "512 MB"), (w["pojemnosc"].wartosc, w["pojemnosc"].tekst))
+        self.assertEqual("przeliczono z zestawu: 1 GB ÷ 2 — sprawdź", ocena(w["pojemnosc"])[0])
+        self.assertEqual("cytat pasuje też do: DDR — wybierz sam", ocena(w["technologia"])[0])
+        self.assertFalse(domyslnie_zaznaczona(w["pojemnosc"]))
+        self.assertFalse(domyslnie_zaznaczona(w["technologia"]))
+        self.assertTrue(domyslnie_zaznaczona(w["parzystosc"]))                 # reszta bez zmian
+        pojedynczy = propozycje.opracuj(odpowiedz, self.szablon, [self.zrodlo], ["KVR400X64C3A/1G"])[0]
+        self.assertEqual((2 ** 30, None), (pojedynczy.wartosc, pojedynczy.uwaga))   # nie zestaw — bez przeliczenia
+        ddr = propozycje.opracuj({"pola": {"technologia": {"wartosc": "DDR", "zrodlo": 1, "cytat": "DDR400"}}},
+                                 self.szablon, [self.zrodlo], ["KVR400X64C3AK2/1G"])[0]
+        self.assertIsNone(ddr.uwaga)                                           # DDR2 nie jest słowem w „DDR400”
+
+    def test_zestaw_z_pelnego_opisu_i_polecenie(self):
+        class Szukarka:
+            def szukaj(s, q, ile):
+                return [self.zrodlo]
+
+            def pobierz(s, strona):
+                return strona
+
+        class Model:
+            def czat(s, model, wiadomosci, schemat, anuluj):
+                s.wiadomosci = wiadomosci
+                return {"pola": {"pojemnosc": {"wartosc": "1 GB", "zrodlo": 1, "cytat": "1GB"}}}
+
+        model = Model()
+        wynik = Asystent(model, Szukarka(), "m").zaproponuj(self.szablon, {"oznaczenia": "Corsair VS1GBKIT400 2x512MB"})
+        self.assertEqual("512 MB", wynik.wartosc("pojemnosc").tekst)
+        self.assertIn("'DDR SDRAM' is the technology DDR", model.wiadomosci[0]["content"])

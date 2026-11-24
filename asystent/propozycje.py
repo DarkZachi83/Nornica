@@ -57,6 +57,7 @@ class Wartosc:
     blad: str | None = None          # klucz tłumaczenia
     dopasowanie: str = PELNE         # czy źródło wymienia oznaczenie przedmiotu (PELNE / PODOBNE / BRAK)
     podobne: str = ""                # przy PODOBNE: oznaczenie znalezione na stronie
+    uwaga: tuple | None = None       # (klucz tłumaczenia, pola) — ostrzeżenie programu, np. zestaw
 
     @property
     def mozna_wstawic(self) -> bool:
@@ -200,7 +201,8 @@ def wiadomosci(szablon: list[dict], dane: dict, zrodla: list[Strona], jezyk: str
         "e.g. GR400D64L3/512 instead of GR400D64L3/512DC): then say so in 'uwagi'. Part numbers ending "
         "with DC, K2 or KIT are kits of several modules and the capacity in the name is the total of the "
         "kit: give the capacity of ONE module. Copy the model name exactly as the source writes it, "
-        "never shorten it. 'producent' and 'nazwa' describe the item itself (e.g. the memory MODULE), "
+        "never shorten it. 'DDR SDRAM' is the technology DDR (not SDRAM); plain 'SDRAM' is SDR SDRAM. "
+        "'producent' and 'nazwa' describe the item itself (e.g. the memory MODULE), "
         "not the chips on it: a module made by an unknown company with Hynix chips has an unknown "
         "manufacturer — leave it empty and mention the chips in 'uwagi'. "
         f"Write 'uwagi' in {JEZYKI_ODPOWIEDZI.get(jezyk, 'English')}: one or two sentences about "
@@ -305,13 +307,55 @@ def _nazwa_innego_produktu(nazwa_: str, oznaczenia: list[str]) -> bool:
     return not any(o in nazwa_ or (len(nazwa_) >= 5 and nazwa_ in o) for o in oznaczenia)
 
 
+_ZESTAW = (re.compile(r"K(\d{1,2})/", re.I),                 # Kingston KVR400X64C3AK2/1G
+           re.compile(r"KIT\s*OF\s*(\d{1,2})", re.I),          # „1G KIT OF 2”
+           re.compile(r"\b(\d)\s*[x×]\s*\d+\s*[MG]B?\b", re.I))  # „2x512MB”
+
+
+def sztuk_w_zestawie(*teksty: str) -> int:
+    """Ile modułów ma zestaw, którego oznaczenie podano (1 — nie zestaw).
+    Goodram: końcówka DC (Dual Channel) po pojemności, np. GR400D64L3/512DC."""
+    for tekst in teksty:
+        for wzor in _ZESTAW:
+            trafienie = wzor.search(tekst or "")
+            if trafienie and 2 <= int(trafienie.group(1)) <= 16:
+                return int(trafienie.group(1))
+        if re.search(r"/\d+[MG]?DC\b", tekst or "", re.I):
+            return 2
+    return 1
+
+
+def _sprawdz_zestaw(w: Wartosc, opis: dict, sztuk: int) -> None:
+    """Pojemność zestawu -> jednego modułu. Przeliczona wartość nie jest „potwierdzona”
+    cytatem (strona mówi o zestawie), więc dostaje uwagę i nie jest zaznaczana."""
+    if sztuk < 2 or opis["typ"] != "pojemnosc" or not isinstance(w.wartosc, (int, float)) or w.blad:
+        return
+    calosc = w.tekst
+    w.wartosc = int(w.wartosc // sztuk)
+    w.tekst = _tekst_wartosci(opis, w.wartosc)
+    w.uwaga = ("asystent.przeliczono_zestaw", {"calosc": calosc, "sztuk": sztuk})
+
+
+def _sprawdz_liste(w: Wartosc, opis: dict) -> None:
+    """„DDR SDRAM” w cytacie zawiera dwie wartości listy (DDR i SDRAM) — model wybrał
+    jedną, ale cytat jej nie rozstrzyga. Pokazujemy, co jeszcze pasuje."""
+    if opis["typ"] != "enum" or w.blad or not w.cytat:
+        return
+    slowa = _normalizuj(w.cytat)
+    inne = [x for x in opis.get("wartosci", []) if x != w.wartosc
+            and re.search(r"(?<![\w])" + re.escape(_normalizuj(x)) + r"(?![\w])", slowa)]
+    if inne:
+        w.uwaga = ("asystent.cytat_niejednoznaczny", {"inne": ", ".join(inne)})
+
+
 def opracuj(odpowiedz: dict, szablon: list[dict], zrodla: list[Strona],
-            oznaczenia: list[str] | None = None) -> list[Wartosc]:
+            oznaczenia: list[str] | None = None, sztuk: int | None = None) -> list[Wartosc]:
     """Odpowiedź modelu -> lista sprawdzonych propozycji w kolejności formularza.
     oznaczenia: numery części przedmiotu — do sprawdzenia, czy źródło mówi o nim."""
     from i18n.tlumacz import nazwa, t
     odpowiedz = odpowiedz if isinstance(odpowiedz, dict) else {}
     zgodnosc = {z.adres: dopasowanie(z, oznaczenia or []) for z in zrodla}
+    sztuk = sztuk if sztuk is not None else sztuk_w_zestawie(*(oznaczenia or []))
     nazwa_ = _wartosc(NAZWA, t("pole.nazwa_modelu"), None, odpowiedz.get("nazwa"), zrodla, zgodnosc)
     if nazwa_ is not None and _nazwa_innego_produktu(nazwa_.tekst, oznaczenia or []):
         nazwa_.dopasowanie = INNA_NAZWA
@@ -319,7 +363,11 @@ def opracuj(odpowiedz: dict, szablon: list[dict], zrodla: list[Strona],
     pola = odpowiedz.get("pola") if isinstance(odpowiedz.get("pola"), dict) else {}
     for opis in szablon:
         etykieta = nazwa(opis["nazwy"]) + (f" [{opis['jednostka']}]" if opis.get("jednostka") else "")
-        wynik.append(_wartosc(opis["kod"], etykieta, opis, pola.get(opis["kod"]), zrodla, zgodnosc))
+        w = _wartosc(opis["kod"], etykieta, opis, pola.get(opis["kod"]), zrodla, zgodnosc)
+        if w is not None:
+            _sprawdz_zestaw(w, opis, sztuk)
+            _sprawdz_liste(w, opis)
+        wynik.append(w)
     return [w for w in wynik if w is not None]
 
 
@@ -359,5 +407,6 @@ class Asystent:
         krok("asystent.krok_sprawdzam")
         uwagi = str(odpowiedz.get("uwagi") or "").strip() if isinstance(odpowiedz, dict) else ""
         oznaczenia = numery(dane.get("nazwa", ""), dane.get("oznaczenia", ""))
-        return Wynik(tekst_zapytania, opracuj(odpowiedz, szablon, zrodla, oznaczenia), zrodla, uwagi[:1000],
-                     self.model)
+        sztuk = sztuk_w_zestawie(dane.get("nazwa", ""), dane.get("oznaczenia", ""))   # pełny tekst: „2x512MB”
+        return Wynik(tekst_zapytania, opracuj(odpowiedz, szablon, zrodla, oznaczenia, sztuk), zrodla,
+                     uwagi[:1000], self.model)

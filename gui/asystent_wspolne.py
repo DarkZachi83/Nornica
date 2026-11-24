@@ -46,6 +46,9 @@ def ocena(w, obecna: str = "") -> tuple[str, bool]:
     Kolejność: najpierw to, co dyskwalifikuje, potem porównanie z formularzem."""
     if w.blad:
         return t(w.blad), True
+    if w.uwaga:
+        klucz, pola = w.uwaga
+        return t(klucz, **pola), True
     if w.dopasowanie == INNA_NAZWA:
         return t("asystent.nazwa_innego_produktu"), True
     if w.zrodlo is not None and w.dopasowanie == BRAK:
@@ -65,7 +68,7 @@ def ocena(w, obecna: str = "") -> tuple[str, bool]:
 def domyslnie_zaznaczona(w, obecna: str = "") -> bool:
     """Tylko pewne propozycje dla PUSTYCH pól: cytat potwierdzony, źródło wymienia
     oznaczenie przedmiotu. Zmianę wpisanej wartości użytkownik wybiera sam."""
-    return (w.mozna_wstawic and w.potwierdzona and w.dopasowanie == PELNE
+    return (w.mozna_wstawic and w.potwierdzona and w.dopasowanie == PELNE and not w.uwaga
             and not (obecna or "").strip())
 
 
