@@ -12,95 +12,36 @@ więc okno przeżywa zmianę języka i motywu.
 """
 from __future__ import annotations
 
-import queue
-import threading
 import tkinter as tk
 import webbrowser
 from tkinter import ttk
 
-from asystent import wyszukiwarki
-from asystent.ollama import Ollama, Przerwano
-from asystent.propozycje import BRAK, PELNE, PODOBNE, Asystent, zapytanie
-from baza.repozytoria import ustawienia
+from asystent.ollama import Przerwano
+from asystent.propozycje import zapytanie
 from gui import styl
+from gui.asystent_wspolne import (PracaAsystenta, domyslnie_zaznaczona, fabryka_domyslna,
+                                  lista_modeli_domyslna, ocena)
 from gui.bazowe import OknoDialogowe
 from gui.pola import PoleTekstu
 from i18n.tlumacz import jezyk_biezacy, t
 from wyjatki import BladNornicy
 
-MODEL_DOMYSLNY = "qwen3:8b"
-ADRES_KLUCZY = "https://ollama.com/settings/keys"
 
-
-# Obie funkcje działają w wątku pobocznym, więc dostają gotowe wartości
-# (słownik z ustawien()), a nie zmienne tkintera — te wolno czytać tylko
-# w wątku interfejsu.
-def _fabryka(u: dict) -> Asystent:
-    """Prawdziwa Ollama i wybrana wyszukiwarka (testy podstawiają własną fabrykę)."""
-    return Asystent(Ollama(u["ollama"]), wyszukiwarki.wyszukiwarka(u["zrodlo"], u["searxng"], u["klucz"]),
-                    u["model"])
-
-
-def _lista_modeli(u: dict) -> list[str]:
-    return Ollama(u["ollama"]).modele()
-
-
-def ocena(w, obecna: str) -> tuple[str, bool]:
-    """Tekst kolumny „Ocena” i czy to ostrzeżenie (wiersz na pomarańczowo).
-    Kolejność: najpierw to, co dyskwalifikuje, potem porównanie z formularzem."""
-    if w.blad:
-        return t(w.blad), True
-    if w.zrodlo is not None and w.dopasowanie == BRAK:
-        return t("asystent.zrodlo_bez_oznaczenia"), True
-    if w.zrodlo is not None and w.dopasowanie == PODOBNE:
-        return t("asystent.zrodlo_podobne", oznaczenie=w.podobne), True
-    if not w.potwierdzona:
-        return t("asystent.niepotwierdzona"), True
-    obecna = (obecna or "").strip()
-    if obecna and obecna.casefold() == w.tekst.casefold():
-        return t("asystent.zgodna"), False
-    if obecna:
-        return t("asystent.inna_niz_w_formularzu"), True
-    return t("asystent.potwierdzona"), False
-
-
-def domyslnie_zaznaczona(w, obecna: str) -> bool:
-    """Tylko pewne propozycje dla PUSTYCH pól: cytat potwierdzony, źródło wymienia
-    oznaczenie przedmiotu. Zmianę wpisanej wartości użytkownik wybiera sam."""
-    return (w.mozna_wstawic and w.potwierdzona and w.dopasowanie == PELNE
-            and not (obecna or "").strip())
-
-
-class OknoAsystenta(OknoDialogowe):
+class OknoAsystenta(PracaAsystenta, OknoDialogowe):
     """dane: kategoria (nazwa), producent, nazwa; szablon: pola kategorii;
     obecne(): {kod: tekst w formularzu}; po_zastosowaniu(wynik, kody, nadpisz).
     Zaznaczony wiersz znaczy „wpisz tę wartość” — także w miejsce obecnej."""
 
     def __init__(self, glowne, szablon: list[dict], dane: dict, obecne, po_zastosowaniu,
-                 fabryka=_fabryka, lista_modeli=_lista_modeli):
+                 fabryka=fabryka_domyslna, lista_modeli=lista_modeli_domyslna):
         super().__init__(glowne)
         self.szablon, self.dane, self.obecne = szablon, dane, obecne
         self.po_zastosowaniu = po_zastosowaniu
-        self._fabryka, self._lista_modeli = fabryka, lista_modeli
-        u = lambda klucz, domyslna="": ustawienia.pobierz(self.db, klucz) or domyslna  # noqa: E731
-        self.model = tk.StringVar(value=u("asystent_model", MODEL_DOMYSLNY))
-        self.zrodlo = tk.StringVar(value=u("asystent_zrodlo", "searxng"))
-        self.searxng = tk.StringVar(value=u("asystent_searxng", "http://127.0.0.1:8888"))
-        self.adres_ollamy = tk.StringVar(value=u("asystent_ollama", "http://127.0.0.1:11434"))
-        self.klucz = tk.StringVar(value=wyszukiwarki.klucz_api())
         self.zapytanie = tk.StringVar()
         self.oznaczenia = PoleTekstu(dane.get("oznaczenia", ""))
-        self.modele: list[str] = []
-        self.stan_ollamy: BladNornicy | None = None
         self.wynik = None
         self.zaznaczone: set[str] = set()
-        self.blad: Exception | None = None
-        self.postep = ""                     # opis bieżącego kroku (tekst)
-        self.pracuje = False
-        self._kolejka: queue.Queue = queue.Queue()
-        self._w_tle = 0                      # wątki, na których wynik jeszcze czekamy
-        self._anuluj = threading.Event()
-        self.wczytaj_modele()
+        self._przygotuj_asystenta(fabryka, lista_modeli)
 
     # ------------------------------------------------------------------ widok
     def zbuduj_ui(self) -> None:
@@ -121,27 +62,6 @@ class OknoAsystenta(OknoDialogowe):
         self._wstaw = ttk.Button(dol, text=t("asystent.wstaw"), style="Akcent.TButton", command=self.zastosuj)
         self._wstaw.pack(side="right", padx=(0, 8))
         self._odswiez()
-
-    def _sekcja_ustawien(self, ramka: ttk.Frame) -> None:
-        sekcja = ttk.LabelFrame(ramka, text=t("asystent.ustawienia"), padding=10)
-        sekcja.pack(fill="x")
-        ttk.Label(sekcja, text=t("asystent.model"), style="Pole.TLabel").grid(row=0, column=0, sticky="w")
-        self._modele = ttk.Combobox(sekcja, textvariable=self.model, values=self.modele, width=30)
-        self._modele.grid(row=0, column=1, sticky="w", padx=(8, 6))
-        ttk.Button(sekcja, text=t("asystent.odswiez_modele"), style="Maly.TButton",
-                   command=self.wczytaj_modele).grid(row=0, column=2, sticky="w")
-        self._stan_ollamy = ttk.Label(sekcja, style="Opis.TLabel", wraplength=420, justify="left")
-        self._stan_ollamy.grid(row=0, column=3, sticky="w", padx=(10, 0))
-        ttk.Label(sekcja, text=t("asystent.zrodlo"), style="Pole.TLabel").grid(row=1, column=0, sticky="w", pady=(6, 0))
-        wybor = ttk.Frame(sekcja)
-        wybor.grid(row=1, column=1, columnspan=3, sticky="w", padx=(8, 0), pady=(6, 0))
-        for zrodlo in wyszukiwarki.ZRODLA:
-            ttk.Radiobutton(wybor, text=t(f"asystent.zrodlo_{zrodlo}"), value=zrodlo, variable=self.zrodlo,
-                            command=self._buduj_pole_zrodla).pack(side="left", padx=(0, 12))
-        self._ramka_zrodla = ttk.Frame(sekcja)
-        self._ramka_zrodla.grid(row=2, column=1, columnspan=3, sticky="we", padx=(8, 0), pady=(4, 0))
-        sekcja.columnconfigure(3, weight=1)
-        self._buduj_pole_zrodla()
 
     def _sekcja_przedmiotu(self, ramka: ttk.Frame) -> None:
         sekcja = ttk.LabelFrame(ramka, text=t("asystent.przedmiot"), padding=10)
@@ -197,17 +117,8 @@ class OknoAsystenta(OknoDialogowe):
         """Widok ze stanu w atrybutach — po każdej zmianie i po przebudowie okna."""
         if not hasattr(self, "_drzewo") or not self._drzewo.winfo_exists():
             return
-        self._modele.configure(values=self.modele)
-        self._stan_ollamy.configure(text=self.stan_ollamy.komunikat() if self.stan_ollamy else
-                                    t("asystent.modele_ollamy", ile=len(self.modele)) if self.modele else "")
-        self._start.state(["disabled"] if self.pracuje else ["!disabled"])
-        self._stop.state(["!disabled"] if self.pracuje else ["disabled"])
-        if self.pracuje:
-            self._pasek.configure(mode="indeterminate")
-            self._pasek.start(12)
-        else:                                # zatrzymany pasek „w ruchu” zostawia kawałek wskaźnika
-            self._pasek.stop()
-            self._pasek.configure(mode="determinate", value=0)
+        self._odswiez_ustawienia()
+        self._odswiez_pracy(self._start, self._stop, self._pasek)
         if self.pracuje:
             self._stan.configure(text=self.postep)
         elif self.blad is not None:
@@ -219,21 +130,6 @@ class OknoAsystenta(OknoDialogowe):
         else:
             self._stan.configure(text=t("asystent.wstep"), style="Opis.TLabel")
         self._wypelnij_tabele()
-
-    def _buduj_pole_zrodla(self) -> None:
-        for dziecko in self._ramka_zrodla.winfo_children():
-            dziecko.destroy()
-        if self.zrodlo.get() == "searxng":
-            ttk.Label(self._ramka_zrodla, text=t("asystent.adres_searxng"), style="Pole.TLabel").pack(side="left")
-            ttk.Entry(self._ramka_zrodla, textvariable=self.searxng, width=36).pack(side="left", padx=(8, 0))
-            ttk.Label(self._ramka_zrodla, text=t("asystent.searxng_podpowiedz"), style="Opis.TLabel").pack(
-                side="left", padx=(8, 0))
-            return
-        ttk.Label(self._ramka_zrodla, text=t("asystent.klucz"), style="Pole.TLabel").pack(side="left")
-        ttk.Entry(self._ramka_zrodla, textvariable=self.klucz, show="•", width=36).pack(side="left", padx=(8, 0))
-        link = ttk.Label(self._ramka_zrodla, text=t("asystent.klucz_skad"), style="Odnosnik.TLabel", cursor="hand2")
-        link.pack(side="left", padx=(8, 0))
-        link.bind("<Button-1>", lambda _e: webbrowser.open(ADRES_KLUCZY))
 
     def _wypelnij_tabele(self) -> None:
         drzewo = self._drzewo
@@ -287,43 +183,14 @@ class OknoAsystenta(OknoDialogowe):
         self._drzewo.set(kod, "wstaw", "☑" if kod in self.zaznaczone else "☐")
 
     # ------------------------------------------------------------------ praca
-    def ustawienia(self) -> dict:
-        """Ustawienia jako zwykłe napisy — do przekazania wątkowi pobocznemu."""
-        return {"model": self.model.get().strip(), "zrodlo": self.zrodlo.get(), "searxng": self.searxng.get().strip(),
-                "klucz": self.klucz.get().strip(), "ollama": self.adres_ollamy.get().strip()}
-
-    def _zapisz_ustawienia(self) -> None:
-        for klucz, zmienna in (("asystent_model", self.model), ("asystent_zrodlo", self.zrodlo),
-                               ("asystent_searxng", self.searxng), ("asystent_ollama", self.adres_ollamy)):
-            ustawienia.zapisz(self.db, klucz, zmienna.get().strip())
-        if self.klucz.get().strip() != wyszukiwarki.klucz_api():
-            wyszukiwarki.zapisz_klucz(self.klucz.get())
-
-    def wczytaj_modele(self) -> None:
-        """Lista modeli z Ollamy w tle; brak Ollamy to komunikat, nie błąd okna."""
-        u = self.ustawienia()
-
-        def w_tle():
-            try:
-                self._kolejka.put(("modele", self._lista_modeli(u), None))
-            except Exception as blad:   # noqa: BLE001
-                self._kolejka.put(("modele", [], blad))
-        self._uruchom_watek(w_tle, "asystent-modele")
-
     def uruchom(self) -> None:
-        if self.pracuje:
+        if not self._gotowy_do_pracy():
             return
-        if not self.model.get().strip():
-            self.blad = BladNornicy("asystent.brak_modelu")
-            self._odswiez()
-            return
-        self._zapisz_ustawienia()
         dane = {**self.dane, "oznaczenia": self.oznaczenia.zapamietaj()}
         tekst_zapytania = self.zapytanie.get().strip() or zapytanie(dane.get("producent", ""), dane.get("nazwa", ""),
                                                                      dane["oznaczenia"])
         self.pracuje, self.blad, self.wynik, self.zaznaczone = True, None, None, set()
         self.postep = t("asystent.krok_start")
-        self._anuluj = threading.Event()
         anuluj, jezyk, u = self._anuluj, jezyk_biezacy(), self.ustawienia()
 
         def w_tle():
@@ -340,72 +207,17 @@ class OknoAsystenta(OknoDialogowe):
         self._uruchom_watek(w_tle, "asystent")
         self._odswiez()
 
-    def _uruchom_watek(self, cel, nazwa: str) -> None:
-        self._w_tle += 1
-        threading.Thread(target=cel, name=nazwa, daemon=True).start()
-        if self._w_tle == 1:                 # jedna pętla odbioru na wszystkie wątki
-            self.after(100, self._czekaj)
-
-    def przerwij(self) -> None:
-        self._anuluj.set()
-        self.postep = t("asystent.przerywam")
-        self._odswiez()
-
-    def _czekaj(self) -> None:
-        """Odbiór wiadomości z wątku pobocznego (tylko tu dotykamy okna)."""
-        if not self.winfo_exists():
-            return
-        zmiana = False
-        try:
-            while True:
-                rodzaj, wartosc, dodatek = self._kolejka.get_nowait()
-                self._odbierz(rodzaj, wartosc, dodatek)
-                if rodzaj != "krok":
-                    self._w_tle -= 1
-                zmiana = True
-        except queue.Empty:
-            pass
-        if self._w_tle > 0:
-            self.after(100, self._czekaj)
-        if zmiana:
-            self._odswiez()
-
     def _odbierz(self, rodzaj: str, wartosc, dodatek) -> None:
-        if rodzaj == "modele":
-            self.modele, self.stan_ollamy = wartosc, (dodatek if isinstance(dodatek, BladNornicy) else
-                                                      BladNornicy("asystent.blad_ollamy", opis=str(dodatek))
-                                                      if dodatek else None)
-            if self.modele and self.model.get() not in self.modele and MODEL_DOMYSLNY in self.modele:
-                self.model.set(MODEL_DOMYSLNY)
-        elif rodzaj == "krok":
-            self.postep = t(wartosc, **dodatek)
-        elif rodzaj == "wynik":
+        if rodzaj == "wynik":
             self.pracuje, self.wynik = False, wartosc
             obecne = self.obecne()
             self.zaznaczone = {w.kod for w in wartosc.wartosci if domyslnie_zaznaczona(w, obecne.get(w.kod, ""))}
-        elif rodzaj == "przerwano":
-            self.pracuje, self.blad = False, BladNornicy("asystent.przerwano")
-        elif rodzaj == "blad":
-            self.pracuje, self.blad = False, dodatek
-
-    def czekaj_na_wynik(self, limit: float = 10.0) -> None:
-        """Dla testów: obsługa kolejki aż praca się skończy."""
-        import time
-        koniec = time.monotonic() + limit
-        while self._w_tle > 0 and time.monotonic() < koniec:
-            self.update()
-            time.sleep(0.02)
-        self._czekaj()
 
     def zastosuj(self) -> None:
         if self.wynik is None or not self.zaznaczone:
             return
         self.po_zastosowaniu(self.wynik, set(self.zaznaczone), True)
         self.zamknij()
-
-    def zamknij(self) -> None:
-        self._anuluj.set()
-        super().zamknij()
 
     def zapamietaj_stan(self) -> None:
         super().zapamietaj_stan()

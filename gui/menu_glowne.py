@@ -20,6 +20,7 @@ def zbuduj_menu(okno) -> None:
     plik.add_command(label=t("akcja.nowa_lokalizacja"), command=okno.nowa_lokalizacja)
     plik.add_command(label=t("akcja.katalog_modeli"), accelerator="Ctrl+M",
                      command=okno.katalog_modeli)
+    plik.add_command(label=t("akcja.asystent_ai"), command=okno.asystent_ai)
     plik.add_command(label=t("akcja.etykiety"), accelerator="Ctrl+P", command=okno.drukuj_etykiety)
     plik.add_command(label=t("akcja.eksport"), accelerator="Ctrl+E", command=okno.eksportuj)
     plik.add_command(label=t("akcja.slowniki"), command=okno.slowniki)
