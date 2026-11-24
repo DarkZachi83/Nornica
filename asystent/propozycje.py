@@ -30,6 +30,7 @@ ILE_STRON = 3
 ZNAKOW_ZE_STRONY = 4000           # 3 strony × 4000 znaków ≈ 3–4 tys. tokenów
 MAKS_CYTAT = 300
 PRODUCENT, NAZWA = "model.producent", "model.nazwa"     # pola ogólne modelu (kropka: nie koliduje z kodami pól)
+PELNE, PODOBNE, BRAK = "pelne", "podobne", "brak"         # dopasowanie źródła do oznaczeń przedmiotu
 
 JEZYKI_ODPOWIEDZI = {"pl": "Polish", "en": "English"}
 OPISY_TYPOW = {
@@ -53,6 +54,8 @@ class Wartosc:
     cytat: str
     potwierdzona: bool
     blad: str | None = None          # klucz tłumaczenia
+    dopasowanie: str = PELNE         # czy źródło wymienia oznaczenie przedmiotu (PELNE / PODOBNE / BRAK)
+    podobne: str = ""                # przy PODOBNE: oznaczenie znalezione na stronie
 
     @property
     def mozna_wstawic(self) -> bool:
@@ -77,14 +80,49 @@ class Wynik:
 
 
 # ------------------------------------------------------------------- zapytanie
+def numery(*teksty: str) -> list[str]:
+    """Numery części z tekstów (słowa z cyfrą, min. 3 znaki), z pierwszej linii
+    każdego tekstu, bez dopisków w nawiasach i bez powtórzeń."""
+    wynik: list[str] = []
+    for tekst in teksty:
+        tekst = (tekst or "").strip()
+        linia = re.sub(r"\([^)]*\)", " ", tekst.splitlines()[0] if tekst else "")
+        for slowo in linia.split():
+            slowo = slowo.strip(",;:")
+            if re.search(r"\d", slowo) and len(slowo) >= 3 and slowo.casefold() not in {w.casefold() for w in wynik}:
+                wynik.append(slowo)
+    return wynik
+
+
+def dopasowanie(zrodlo: Strona | None, oznaczenia: list[str]) -> tuple[str, str]:
+    """Czy strona mówi o TYM przedmiocie: PELNE — wymienia któreś z oznaczeń;
+    PODOBNE — tylko oznaczenie z tym samym początkiem (np. „GR400D64L3/512” zamiast
+    „…/512DC”: inny wariant albo cała rodzina w karcie katalogowej); BRAK — żadnego.
+    Krótkie oznaczenia (poniżej 5 znaków) nie są brane pod uwagę."""
+    oznaczenia = [o for o in oznaczenia if len(o) >= 5]
+    if not oznaczenia or zrodlo is None:
+        return PELNE, ""
+    tekst = _normalizuj(zrodlo.tekst)
+    if any(_normalizuj(o) in tekst for o in oznaczenia):
+        return PELNE, ""
+    najlepsze = ""
+    for oznaczenie in oznaczenia:
+        minimum = max(5, -(-len(oznaczenie) * 6 // 10))             # co najmniej 60% długości
+        for dlugosc in range(len(oznaczenie) - 1, minimum - 1, -1):
+            trafienie = re.search(re.escape(oznaczenie[:dlugosc]) + r"[\w/.\-]*", zrodlo.tekst, re.I)
+            if trafienie:
+                if dlugosc > len(najlepsze):
+                    najlepsze = trafienie.group(0)
+                break
+    return (PODOBNE, najlepsze) if najlepsze else (BRAK, "")
+
+
 def zapytanie(producent: str = "", nazwa: str = "", oznaczenia: str = "") -> str:
     """„Samsung KMM5321200AW-6 KM44C1000AJ-6 datasheet” — z pierwszej linii oznaczeń
     tylko numery części (słowa z cyfrą), bez dopisków w nawiasach i bez powtórzeń.
     Słowo „datasheet” kieruje do kart katalogowych."""
-    linia = re.sub(r"\([^)]*\)", " ", (oznaczenia or "").strip().splitlines()[0] if (oznaczenia or "").strip() else "")
-    numery = " ".join(s.strip(",;") for s in linia.split() if re.search(r"\d", s) and len(s) >= 3)
     slowa: list[str] = []
-    for czesc in (producent, nazwa, numery):
+    for czesc in (producent, nazwa, " ".join(numery(oznaczenia))):
         for slowo in (czesc or "").split():
             if slowo.casefold() not in {s.casefold() for s in slowa}:
                 slowa.append(slowo)
@@ -147,7 +185,11 @@ def wiadomosci(szablon: list[dict], dane: dict, zrodla: list[Strona], jezyk: str
         "source that proves the value (max 200 characters). If no source states it, use an empty "
         "'wartosc', zrodlo 0 and an empty 'cytat'. Do not guess and do not convert units unless the "
         "field asks for it. If the item markings match several variants, leave the field empty and "
-        "explain in 'uwagi'. "
+        "explain in 'uwagi'. A source may describe a similar but different product (another suffix, "
+        "e.g. GR400D64L3/512 instead of GR400D64L3/512DC): then say so in 'uwagi'. Part numbers ending "
+        "with DC, K2 or KIT are kits of several modules and the capacity in the name is the total of the "
+        "kit: give the capacity of ONE module. Copy the model name exactly as the source writes it, "
+        "never shorten it. "
         f"Write 'uwagi' in {JEZYKI_ODPOWIEDZI.get(jezyk, 'English')}: one or two sentences about "
         "doubts, conflicting sources or what the user should check on the item.")
     uzytkownik = (
@@ -157,7 +199,8 @@ def wiadomosci(szablon: list[dict], dane: dict, zrodla: list[Strona], jezyk: str
         f"Markings and notes from the owner:\n{dane.get('oznaczenia', '') or '-'}\n\n"
         "Fields (key: name (type)):\n- producent: manufacturer (short text)\n"
         "- nazwa: model name or part number (short text)\n" + "\n".join(linie_pol) +
-        "\n\nSources:\n\n" + "\n\n".join(linie_zrodel))
+        "\n\nSources:\n\n" + "\n\n".join(linie_zrodel) +
+        f"\n\nRemember: write 'uwagi' in {JEZYKI_ODPOWIEDZI.get(jezyk, 'English')}.")
     return [{"role": "system", "content": system}, {"role": "user", "content": uzytkownik}]
 
 
@@ -219,7 +262,8 @@ def _tekst_wartosci(opis: dict | None, wartosc) -> str:
     return liczba_na_tekst(wartosc)
 
 
-def _wartosc(kod: str, etykieta: str, opis: dict | None, surowe, zrodla: list[Strona]) -> Wartosc | None:
+def _wartosc(kod: str, etykieta: str, opis: dict | None, surowe, zrodla: list[Strona],
+             zgodnosc: dict | None = None) -> Wartosc | None:
     surowe = surowe if isinstance(surowe, dict) else {}
     tekst = str(surowe.get("wartosc") or "").strip()
     if not tekst:
@@ -232,20 +276,24 @@ def _wartosc(kod: str, etykieta: str, opis: dict | None, surowe, zrodla: list[St
         blad = None
     except ValueError:
         wartosc, blad = None, "asystent.wartosc_niezgodna"
+    dopasowane, podobne = (zgodnosc or {}).get(zrodlo.adres if zrodlo else None, (PELNE, ""))
     return Wartosc(kod, etykieta, wartosc, _tekst_wartosci(opis, wartosc) if blad is None else tekst,
-                   zrodlo, cytat, potwierdzony(cytat, zrodlo), blad)
+                   zrodlo, cytat, potwierdzony(cytat, zrodlo), blad, dopasowane, podobne)
 
 
-def opracuj(odpowiedz: dict, szablon: list[dict], zrodla: list[Strona]) -> list[Wartosc]:
-    """Odpowiedź modelu -> lista sprawdzonych propozycji w kolejności formularza."""
+def opracuj(odpowiedz: dict, szablon: list[dict], zrodla: list[Strona],
+            oznaczenia: list[str] | None = None) -> list[Wartosc]:
+    """Odpowiedź modelu -> lista sprawdzonych propozycji w kolejności formularza.
+    oznaczenia: numery części przedmiotu — do sprawdzenia, czy źródło mówi o nim."""
     from i18n.tlumacz import nazwa, t
     odpowiedz = odpowiedz if isinstance(odpowiedz, dict) else {}
-    wynik = [_wartosc(PRODUCENT, t("pole.producent"), None, odpowiedz.get("producent"), zrodla),
-             _wartosc(NAZWA, t("pole.nazwa_modelu"), None, odpowiedz.get("nazwa"), zrodla)]
+    zgodnosc = {z.adres: dopasowanie(z, oznaczenia or []) for z in zrodla}
+    wynik = [_wartosc(PRODUCENT, t("pole.producent"), None, odpowiedz.get("producent"), zrodla, zgodnosc),
+             _wartosc(NAZWA, t("pole.nazwa_modelu"), None, odpowiedz.get("nazwa"), zrodla, zgodnosc)]
     pola = odpowiedz.get("pola") if isinstance(odpowiedz.get("pola"), dict) else {}
     for opis in szablon:
         etykieta = nazwa(opis["nazwy"]) + (f" [{opis['jednostka']}]" if opis.get("jednostka") else "")
-        wynik.append(_wartosc(opis["kod"], etykieta, opis, pola.get(opis["kod"]), zrodla))
+        wynik.append(_wartosc(opis["kod"], etykieta, opis, pola.get(opis["kod"]), zrodla, zgodnosc))
     return [w for w in wynik if w is not None]
 
 
@@ -284,4 +332,6 @@ class Asystent:
         odpowiedz = self.llm.czat(self.model, wiadomosci(szablon, dane, zrodla, jezyk), schemat(szablon), anuluj)
         krok("asystent.krok_sprawdzam")
         uwagi = str(odpowiedz.get("uwagi") or "").strip() if isinstance(odpowiedz, dict) else ""
-        return Wynik(tekst_zapytania, opracuj(odpowiedz, szablon, zrodla), zrodla, uwagi[:1000], self.model)
+        oznaczenia = numery(dane.get("nazwa", ""), dane.get("oznaczenia", ""))
+        return Wynik(tekst_zapytania, opracuj(odpowiedz, szablon, zrodla, oznaczenia), zrodla, uwagi[:1000],
+                     self.model)

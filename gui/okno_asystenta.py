@@ -20,7 +20,7 @@ from tkinter import ttk
 
 from asystent import wyszukiwarki
 from asystent.ollama import Ollama, Przerwano
-from asystent.propozycje import Asystent, zapytanie
+from asystent.propozycje import BRAK, PELNE, PODOBNE, Asystent, zapytanie
 from baza.repozytoria import ustawienia
 from gui import styl
 from gui.bazowe import OknoDialogowe
@@ -45,9 +45,36 @@ def _lista_modeli(u: dict) -> list[str]:
     return Ollama(u["ollama"]).modele()
 
 
+def ocena(w, obecna: str) -> tuple[str, bool]:
+    """Tekst kolumny „Ocena” i czy to ostrzeżenie (wiersz na pomarańczowo).
+    Kolejność: najpierw to, co dyskwalifikuje, potem porównanie z formularzem."""
+    if w.blad:
+        return t(w.blad), True
+    if w.zrodlo is not None and w.dopasowanie == BRAK:
+        return t("asystent.zrodlo_bez_oznaczenia"), True
+    if w.zrodlo is not None and w.dopasowanie == PODOBNE:
+        return t("asystent.zrodlo_podobne", oznaczenie=w.podobne), True
+    if not w.potwierdzona:
+        return t("asystent.niepotwierdzona"), True
+    obecna = (obecna or "").strip()
+    if obecna and obecna.casefold() == w.tekst.casefold():
+        return t("asystent.zgodna"), False
+    if obecna:
+        return t("asystent.inna_niz_w_formularzu"), True
+    return t("asystent.potwierdzona"), False
+
+
+def domyslnie_zaznaczona(w, obecna: str) -> bool:
+    """Tylko pewne propozycje dla PUSTYCH pól: cytat potwierdzony, źródło wymienia
+    oznaczenie przedmiotu. Zmianę wpisanej wartości użytkownik wybiera sam."""
+    return (w.mozna_wstawic and w.potwierdzona and w.dopasowanie == PELNE
+            and not (obecna or "").strip())
+
+
 class OknoAsystenta(OknoDialogowe):
     """dane: kategoria (nazwa), producent, nazwa; szablon: pola kategorii;
-    obecne(): {kod: tekst w formularzu}; po_zastosowaniu(wynik, kody, nadpisz)."""
+    obecne(): {kod: tekst w formularzu}; po_zastosowaniu(wynik, kody, nadpisz).
+    Zaznaczony wiersz znaczy „wpisz tę wartość” — także w miejsce obecnej."""
 
     def __init__(self, glowne, szablon: list[dict], dane: dict, obecne, po_zastosowaniu,
                  fabryka=_fabryka, lista_modeli=_lista_modeli):
@@ -62,7 +89,6 @@ class OknoAsystenta(OknoDialogowe):
         self.adres_ollamy = tk.StringVar(value=u("asystent_ollama", "http://127.0.0.1:11434"))
         self.klucz = tk.StringVar(value=wyszukiwarki.klucz_api())
         self.zapytanie = tk.StringVar()
-        self.nadpisz = tk.BooleanVar(value=False)
         self.oznaczenia = PoleTekstu(dane.get("oznaczenia", ""))
         self.modele: list[str] = []
         self.stan_ollamy: BladNornicy | None = None
@@ -90,7 +116,7 @@ class OknoAsystenta(OknoDialogowe):
         self._sekcja_wynikow(ramka)
         dol = ttk.Frame(ramka)
         dol.pack(fill="x", pady=(10, 0))
-        ttk.Checkbutton(dol, text=t("trw.nadpisz"), variable=self.nadpisz).pack(side="left")
+        ttk.Label(dol, text=t("asystent.wstaw_podpowiedz"), style="Opis.TLabel").pack(side="left")
         ttk.Button(dol, text=t("przycisk.zamknij"), command=self.zamknij).pack(side="right")
         self._wstaw = ttk.Button(dol, text=t("asystent.wstaw"), style="Akcent.TButton", command=self.zastosuj)
         self._wstaw.pack(side="right", padx=(0, 8))
@@ -217,14 +243,9 @@ class OknoAsystenta(OknoDialogowe):
             return
         obecne = self.obecne()
         for w in self.wynik.wartosci:
-            if w.blad:
-                pewnosc, znak, znaczniki = t(w.blad), "—", ("bledna",)
-            elif w.potwierdzona:
-                pewnosc, znak, znaczniki = t("asystent.potwierdzona"), "", ()
-            else:
-                pewnosc, znak, znaczniki = t("asystent.niepotwierdzona"), "", ("niepotwierdzona",)
-            if not w.blad:
-                znak = "☑" if w.kod in self.zaznaczone else "☐"
+            pewnosc, ostrzezenie = ocena(w, obecne.get(w.kod, ""))
+            znaczniki = ("bledna",) if w.blad else ("niepotwierdzona",) if ostrzezenie else ()
+            znak = "—" if w.blad else "☑" if w.kod in self.zaznaczone else "☐"
             drzewo.insert("", "end", iid=w.kod, tags=znaczniki,
                           values=(znak, w.etykieta, obecne.get(w.kod, "") or "—", w.tekst, pewnosc))
         if biezacy and drzewo.exists(biezacy):
@@ -360,10 +381,8 @@ class OknoAsystenta(OknoDialogowe):
             self.postep = t(wartosc, **dodatek)
         elif rodzaj == "wynik":
             self.pracuje, self.wynik = False, wartosc
-            obecne = {k: (v or "").casefold() for k, v in self.obecne().items()}
-            # domyślnie: potwierdzone i różne od tego, co już jest w formularzu
-            self.zaznaczone = {w.kod for w in wartosc.wartosci if w.mozna_wstawic and w.potwierdzona
-                               and w.tekst.casefold() != obecne.get(w.kod, "")}
+            obecne = self.obecne()
+            self.zaznaczone = {w.kod for w in wartosc.wartosci if domyslnie_zaznaczona(w, obecne.get(w.kod, ""))}
         elif rodzaj == "przerwano":
             self.pracuje, self.blad = False, BladNornicy("asystent.przerwano")
         elif rodzaj == "blad":
@@ -381,7 +400,7 @@ class OknoAsystenta(OknoDialogowe):
     def zastosuj(self) -> None:
         if self.wynik is None or not self.zaznaczone:
             return
-        self.po_zastosowaniu(self.wynik, set(self.zaznaczone), self.nadpisz.get())
+        self.po_zastosowaniu(self.wynik, set(self.zaznaczone), True)
         self.zamknij()
 
     def zamknij(self) -> None:

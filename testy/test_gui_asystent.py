@@ -39,7 +39,7 @@ class TestOknaAsystenta(test_gui.TestPrzebudowy):
         self.model_okno.pokaz()
         self.model_okno.producent.set("Samsung")
         self.model_okno.v["nazwa"].set("KMM5321200AW-6")
-        self.model_okno.v["numer_czesci"].set("KM44C4100CK-6")
+        self.model_okno.v["numer_czesci"].set("KM44C4100C")       # dokładnie jak na stronie źródła
 
     def asystent(self, odpowiedz=ODPOWIEDZ, lista_modeli=None):
         self.model = _Model(odpowiedz)
@@ -53,7 +53,7 @@ class TestOknaAsystenta(test_gui.TestPrzebudowy):
     def test_propozycje_do_formularza_nie_do_bazy(self):
         okno = self.asystent()
         self.assertEqual(["gemma3:4b", "qwen3:8b"], okno.modele)
-        self.assertEqual("KM44C4100CK-6", okno.oznaczenia.zapamietaj())     # z numeru części modelu
+        self.assertEqual("KM44C4100C", okno.oznaczenia.zapamietaj())        # z numeru części modelu
         okno.uruchom()
         okno.czekaj_na_wynik()
         self.assertIsNone(okno.blad)
@@ -81,6 +81,32 @@ class TestOknaAsystenta(test_gui.TestPrzebudowy):
         self.assertEqual(liczba_modeli, self.db.execute("SELECT COUNT(*) FROM model").fetchone()[0])
         self.model_okno.zapisz()                       # dopiero „Zapisz” tworzy model
         self.assertEqual(liczba_modeli + 1, self.db.execute("SELECT COUNT(*) FROM model").fetchone()[0])
+
+    def test_wartosc_inna_niz_w_formularzu_tylko_na_zyczenie(self):
+        from asystent.propozycje import PODOBNE
+        szablon = slowniki.szablon(self.db, self.kat_ram)
+        self.model_okno.atrybuty.wstaw(szablon, {"technologia": "EDO"}, True)
+        okno = self.asystent()
+        okno.uruchom()
+        okno.czekaj_na_wynik()
+        self.assertEqual({"pojemnosc"}, okno.zaznaczone)                   # EDO w formularzu — nie ruszamy
+        from i18n.tlumacz import t
+        self.assertEqual(t("asystent.inna_niz_w_formularzu"), okno._drzewo.set("technologia", "pewnosc"))
+        self.assertEqual(t("asystent.zgodna"), okno._drzewo.set(PRODUCENT, "pewnosc"))
+        okno.przelacz("technologia")                                       # świadoma zmiana
+        okno.zastosuj()
+        self.assertEqual("FPM", self.model_okno.atrybuty.tekst_pola(
+            next(o for o in szablon if o["kod"] == "technologia")))
+        # źródło o innym oznaczeniu: ostrzeżenie i brak domyślnego zaznaczenia
+        self.model_okno.v["numer_czesci"].set("KM44C4100CK-6")
+        self.model_okno.v["nazwa"].set("")
+        okno = self.asystent()
+        okno.uruchom()
+        okno.czekaj_na_wynik()
+        self.assertEqual(set(), okno.zaznaczone)
+        self.assertEqual(PODOBNE, okno.wynik.wartosc("pojemnosc").dopasowanie)
+        self.assertEqual(t("asystent.zrodlo_podobne", oznaczenie="KM44C4100C"),
+                         okno._drzewo.set("pojemnosc", "pewnosc"))
 
     def test_ustawienia_zapamietane_klucz_poza_baza(self):
         okno = self.asystent()
