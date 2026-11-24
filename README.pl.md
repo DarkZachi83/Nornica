@@ -137,13 +137,25 @@ Nornica działa bez niego; przycisk *Asystent AI…* mówi wtedy, czego brakuje.
    lżejszy: `gemma3:4b`). Model działa tylko na Twoim komputerze — program
    łączy się wyłącznie z adresem 127.0.0.1.
 2. Wybierz wyszukiwarkę w oknie asystenta:
-   - **Ollama web search** — darmowe konto na ollama.com i klucz API
-     (ustawienia konta → *Keys*). Do Ollamy trafia samo zapytanie, np.
-     „KM44C4100 datasheet”. Klucz jest w pliku `ollama_klucz.txt` w folderze
-     danych (tylko dla właściciela) albo w zmiennej `OLLAMA_API_KEY` —
-     nie w bazie i nie w kopiach zapasowych.
-   - **SearXNG** — własna wyszukiwarka, np. w Dockerze; w `settings.yml`
-     dopisz `json` do `search: formats`.
+   - **SearXNG** (domyślna, darmowa) — wyszukiwarka uruchamiana u siebie
+     w Dockerze. Gotowe pliki są w `narzedzia/searxng/`; na Arch Linux:
+
+         sudo pacman -S docker docker-compose
+         sudo systemctl enable --now docker
+         sudo usermod -aG docker $USER        # potem wyloguj się i zaloguj
+         mkdir -p ~/searxng/core-config
+         cp narzedzia/searxng/docker-compose.yml ~/searxng/
+         cp narzedzia/searxng/settings.yml ~/searxng/core-config/
+         sed -i "s|ZMIEN_MNIE|$(openssl rand -hex 32)|" ~/searxng/core-config/settings.yml
+         cd ~/searxng && docker compose up -d
+
+     W oknie asystenta adres: `http://127.0.0.1:8080`. SearXNG działa tylko
+     na tym komputerze i startuje razem z systemem.
+   - **Ollama web search** — wymaga konta na ollama.com, klucza API
+     i płatnych kredytów albo subskrypcji. Do Ollamy trafia samo zapytanie.
+     Klucz jest w pliku `ollama_klucz.txt` w folderze danych (tylko dla
+     właściciela) albo w zmiennej `OLLAMA_API_KEY` — nie w bazie i nie
+     w kopiach zapasowych.
 
 Małe modele potrafią zmyślać, dlatego wartości bez potwierdzonego cytatu
 są oznaczone jako niepotwierdzone i nie są zaznaczane. Typ pamięci (FPM czy

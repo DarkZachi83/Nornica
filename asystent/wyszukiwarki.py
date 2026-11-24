@@ -6,7 +6,8 @@ z krótkim fragmentem, pobierz(strona) — tę samą stronę z pełnym tekstem
 (albo z samym fragmentem, gdy pobranie się nie uda).
 
 Ollama web search (https://docs.ollama.com/capabilities/web-search) wymaga
-darmowego konta i klucza API. Do serwera Ollamy trafia samo zapytanie
+konta i klucza API, a od listopada 2026 także płatnych kredytów (HTTP 402
+„Add usage credits”) — dlatego domyślna jest SearXNG. Do serwera Ollamy trafia samo zapytanie
 (np. „KM44C4100 datasheet”) i adres pobieranej strony — nic z kolekcji.
 
 SearXNG to wyszukiwarka uruchamiana u siebie (np. w Dockerze); w jej
@@ -30,7 +31,7 @@ from html.parser import HTMLParser
 
 from wyjatki import BladNornicy
 
-ZRODLA = ("ollama", "searxng")
+ZRODLA = ("searxng", "ollama")      # kolejność w oknie: darmowa pierwsza
 ADRES_OLLAMA_WEB = "https://ollama.com"
 MAKS_POBRANIE = 3 * 1024 * 1024          # bajtów strony
 MAKS_TEKST = 60_000                      # znaków tekstu strony (i tak przycinane przed modelem)
