@@ -90,8 +90,15 @@ Python builds).
 **Arch Linux**
 
     sudo pacman -S python tk python-pillow python-qrcode python-reportlab python-openpyxl python-cryptography
-    pip install --user xlwt          # optional, legacy .xls export
-    pip install --user ttkbootstrap==2.2.7   # optional, modern look and dark theme
+
+Libraries not packaged by Arch (ttkbootstrap — modern look and dark theme,
+xlwt — legacy .xls export) go into a separate environment: Arch does not allow
+`pip install` into the system Python (PEP 668). The environment still sees
+the pacman packages:
+
+    python -m venv --system-site-packages ~/.venvs/nornica
+    ~/.venvs/nornica/bin/pip install ttkbootstrap==2.2.7 xlwt
+    ~/.venvs/nornica/bin/python nornica.py
 
 **Debian / Ubuntu**
 
