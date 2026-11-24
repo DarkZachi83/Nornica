@@ -61,6 +61,11 @@ The interface is available in English (**VOLE**) and Polish (**NORNICA**,
 - **Backup to a single ZIP** (File → Backup…, Ctrl+B) — the database and all
   attached files, verified after writing; restore checks the whole backup first
   and keeps the current database aside before replacing it.
+- **AI assistant** (model window → *AI assistant…*) — type the chip or label
+  markings, the assistant searches the web and a local model (Ollama) picks the
+  spec values. Every suggestion has a source and a verbatim quote; the program
+  itself checks that the quote is on the page and that the value fits the
+  field. You tick what you accept — data goes into the form, not the database.
 - **Light and dark theme** — the ☀/☾ button in the toolbar or View menu;
   the choice is remembered. Sharp text on Windows with 125–150% scaling.
 - **Safe data** — SQLite with atomic, checksummed schema migrations and an
@@ -119,6 +124,27 @@ related feature is disabled (with a message saying why).
     python nornica.py --bez-powitania  # skip the splash screen
     python nornica.py --konsola        # prepare the database and print a summary
 
+## AI assistant (optional)
+
+NORNICA works without it; the *AI assistant…* button then says what is missing.
+
+1. Install [Ollama](https://ollama.com/download) and pull a model, e.g.
+   `ollama pull qwen3:8b` (≈5 GB, fits an 8 GB graphics card; lighter:
+   `gemma3:4b`). The model runs only on your computer — the program connects
+   to 127.0.0.1 only.
+2. Choose a search engine in the assistant window:
+   - **Ollama web search** — a free ollama.com account and an API key
+     (account settings → *Keys*). Only the query, e.g. "KM44C4100 datasheet",
+     goes to Ollama. The key is kept in `ollama_klucz.txt` in the data folder
+     (owner-only) or in the `OLLAMA_API_KEY` variable — not in the database
+     and not in backups.
+   - **SearXNG** — your own search engine, e.g. in Docker; add `json` to
+     `search: formats` in `settings.yml`.
+
+Small models can make things up, so values without a confirmed quote are
+marked unconfirmed and are not ticked. The memory type (FPM or EDO) usually
+follows from the chip markings — type them into the *Markings* field.
+
 ## Where your data lives
 
 The database, backups, photos and certificates are **never stored in the code
@@ -136,7 +162,7 @@ files, backups and keys in case someone points the data folder here.
     pip install -r requirements-dev.txt
     xvfb-run -a -s "-screen 0 1920x1080x24" python -m unittest discover -s testy -t .
 
-About 470 tests: database, migrations, business rules, i18n key parity
+About 510 tests: database, migrations, business rules, i18n key parity
 (EN/PL), PDF labels (decoded back with zbar), the phone server, The Retro Web
 parser (on saved pages) and the GUI. Without a display the GUI tests are
 skipped. CI runs them on every push (GitHub Actions).
@@ -147,6 +173,7 @@ skipped. CI runs them on every push (GitHub Actions).
     konfiguracja.py      platform-dependent data paths
     baza/                SQLite: schema migrations, connection, repositories
     uslugi/              business rules: inventory, labels, export, scanner server, The Retro Web
+    asystent/            AI assistant: Ollama, search engines, checking suggestions
     gui/                 tkinter windows
     raporty/             reports
     i18n/                translator, en.json, pl.json

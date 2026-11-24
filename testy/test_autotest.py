@@ -22,5 +22,5 @@ class TestAutotestu(unittest.TestCase):
         raport = (tmp / "raport.txt").read_text(encoding="utf-8")
         self.assertEqual(0, wynik, raport)
         self.assertIn("WYNIK: wszystko działa", raport)
-        self.assertEqual(8, raport.count("OK    "))
+        self.assertEqual(9, raport.count("OK    "))
         self.assertFalse(prawdziwe.exists())                     # folder użytkownika nietknięty

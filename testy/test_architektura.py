@@ -3,6 +3,7 @@
 
   baza/      — SQL, migracje, repozytoria (odczyt i zapis wierszy),
   uslugi/    — reguły programu, bez interfejsu,
+  asystent/  — asystent AI (Ollama, wyszukiwarki), bez interfejsu,
   gui/       — okna; dane czyta przez repozytoria, zmienia przez usługi.
 
 Limity rozmiaru nie są celem samym w sobie: plik albo funkcja, która je
@@ -49,7 +50,7 @@ class TestWarstw(unittest.TestCase):
     def test_baza_i_uslugi_nie_zaleza_od_interfejsu(self):
         bledne = []
         for sciezka, tekst in _pliki_programu():
-            if not sciezka.startswith(("baza/", "uslugi/", "raporty/")):
+            if not sciezka.startswith(("baza/", "uslugi/", "raporty/", "asystent/")):
                 continue
             importy = _importy(tekst)
             if "gui" in importy or ("tkinter" in importy and sciezka not in TKINTER_POZA_GUI):
