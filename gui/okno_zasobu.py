@@ -12,7 +12,8 @@ from pathlib import Path
 from tkinter import ttk
 
 from baza.enumy import opcje
-from baza.repozytoria import egzemplarze, modele
+from baza.repozytoria import egzemplarze, modele, slowniki
+from baza.repozytoria import zasoby as repo_zasoby
 from gui.bazowe import OknoDialogowe, pokaz_blad
 from gui.pola import PoleTekstu, PoleWyboru
 from i18n.tlumacz import nazwa, t
@@ -33,7 +34,7 @@ class OknoZasobu(OknoDialogowe):
         self.tryb = tryb
         self.sciezka = sciezka
         self.zasob_id = zasob_id
-        z = self.db.execute("SELECT * FROM zasob WHERE id = ?", (zasob_id,)).fetchone() if zasob_id else None
+        z = repo_zasoby.pobierz(self.db, zasob_id)
         self._zasob = z
         if z is not None:
             typ, tytul = z["typ"], z["tytul"]
@@ -59,7 +60,7 @@ class OknoZasobu(OknoDialogowe):
         if self._model_id:
             wynik.append(("model", t("cel.model", nazwa=modele.etykieta(modele.pobierz(self.db, self._model_id)))))
         if self._kat_id:
-            kat = self.db.execute("SELECT nazwy FROM kategoria WHERE id = ?", (self._kat_id,)).fetchone()
+            kat = slowniki.kategoria(self.db, self._kat_id)
             wynik.append(("kategoria", t("cel.kategoria", nazwa=nazwa(kat["nazwy"]))))
         return wynik
 

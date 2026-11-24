@@ -27,6 +27,11 @@ POLA_TEKSTOWE = ("nazwa_wlasna", "kod_inwentarzowy", "numer_seryjny", "rewizja",
                  "pozycja_montazu", "data_nabycia", "zrodlo_nabycia", "cena")
 
 
+def _etykieta(rodzic: ttk.Frame, klucz: str, wiersz: int) -> None:
+    ttk.Label(rodzic, text=t(klucz), style="Pole.TLabel").grid(
+        row=wiersz, column=0, sticky="w", padx=(0, 10), pady=3)
+
+
 class OknoEgzemplarza(OknoDialogowe):
     ZAKLADKA_ZLACZY = 2
 
@@ -70,8 +75,8 @@ class OknoEgzemplarza(OknoDialogowe):
             dziedziczone=z_modelu, glowne=glowne)
         if e is None and rodzic_id:
             # część dodawana „do środka” — domyślnie kategoria Części
-            wiersz = self.db.execute("SELECT id FROM kategoria WHERE kod = 'czesci'").fetchone()
-            self.kategoria.wartosc = wiersz[0] if wiersz else None
+            wiersz = slowniki.kategoria_po_kodzie(self.db, "czesci")
+            self.kategoria.wartosc = wiersz["id"] if wiersz else None
 
     def _atrybuty_modelu(self, model_id: int | None) -> dict:
         m = modele.pobierz(self.db, model_id) if model_id else None
@@ -118,15 +123,30 @@ class OknoEgzemplarza(OknoDialogowe):
         self._notatnik = ttk.Notebook(ramka)
         self._notatnik.pack(fill="both", expand=True)
 
-        # --- Ogólne
         ogolne = ttk.Frame(self._notatnik, padding=12)
         self._notatnik.add(ogolne, text=t("zakladka.ogolne"))
+        wiersz = self._karta_ogolne(ogolne)
+        self._sekcja_miejsca(ogolne, wiersz)
+
+        self._parametry = ttk.Frame(self._notatnik, padding=12)
+        self._notatnik.add(self._parametry, text=t("zakladka.parametry"))
+        self._zbuduj_parametry()
+
+        # Złącza: z modelu + zmiany tego egzemplarza
+        karta_zlaczy = ttk.Frame(self._notatnik, padding=12)
+        self._notatnik.add(karta_zlaczy, text=t("zakladka.zlacza"))
+        self.zlacza.zbuduj(karta_zlaczy)
+
+        prywatne = ttk.Frame(self._notatnik, padding=12)
+        self._notatnik.add(prywatne, text=t("zakladka.prywatne"))
+        self._karta_prywatne(prywatne)
+
+        self.przyciski(ramka, self.zapisz).pack(fill="x", pady=(12, 0))
+
+    def _karta_ogolne(self, ogolne: ttk.Frame) -> int:
+        """Kategoria, model, kody, status, ilość. Zwraca pierwszy wolny wiersz."""
         wiersz = 0
-
-        def etykieta(tekst_klucz, r):
-            ttk.Label(ogolne, text=t(tekst_klucz), style="Pole.TLabel").grid(
-                row=r, column=0, sticky="w", padx=(0, 10), pady=3)
-
+        etykieta = lambda klucz, r: _etykieta(ogolne, klucz, r)  # noqa: E731
         etykieta("pole.kategoria", wiersz)
         self.kategoria.zbuduj(ogolne, width=40).grid(row=wiersz, column=1, columnspan=2, sticky="we", pady=3)
         wiersz += 1
@@ -160,8 +180,11 @@ class OknoEgzemplarza(OknoDialogowe):
         etykieta("pole.ilosc", wiersz)
         ttk.Spinbox(ogolne, from_=1, to=100000, textvariable=self.v["ilosc"], width=8).grid(
             row=wiersz, column=1, sticky="w", pady=3)
-        wiersz += 1
+        return wiersz + 1
 
+    def _sekcja_miejsca(self, ogolne: ttk.Frame, wiersz: int) -> None:
+        """Lokalizacja albo montaż w innym egzemplarzu (wzajemnie się wykluczają)."""
+        etykieta = lambda klucz, r: _etykieta(ogolne, klucz, r)  # noqa: E731
         ttk.Separator(ogolne).grid(row=wiersz, column=0, columnspan=3, sticky="we", pady=8)
         wiersz += 1
         etykieta("pole.miejsce", wiersz)
@@ -189,19 +212,8 @@ class OknoEgzemplarza(OknoDialogowe):
         ogolne.columnconfigure(1, weight=1)
         self._umiejscowienie_zmienione()
 
-        # --- Parametry
-        self._parametry = ttk.Frame(self._notatnik, padding=12)
-        self._notatnik.add(self._parametry, text=t("zakladka.parametry"))
-        self._zbuduj_parametry()
-
-        # --- Złącza (z modelu + zmiany tego egzemplarza)
-        karta_zlaczy = ttk.Frame(self._notatnik, padding=12)
-        self._notatnik.add(karta_zlaczy, text=t("zakladka.zlacza"))
-        self.zlacza.zbuduj(karta_zlaczy)
-
-        # --- Prywatne i uwagi
-        prywatne = ttk.Frame(self._notatnik, padding=12)
-        self._notatnik.add(prywatne, text=t("zakladka.prywatne"))
+    def _karta_prywatne(self, prywatne: ttk.Frame) -> None:
+        """Nabycie, cena i uwagi — dane, których nie drukuje się na etykietach."""
         ttk.Label(prywatne, text=t("formularz.dane_prywatne"), style="Opis.TLabel",
                   wraplength=460, justify="left").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
         for r, (klucz, pole) in enumerate((("pole.data_nabycia", "data_nabycia"),
@@ -226,8 +238,6 @@ class OknoEgzemplarza(OknoDialogowe):
         prywatne.columnconfigure(2, weight=1)
         prywatne.rowconfigure(4, weight=1)
 
-        self.przyciski(ramka, self.zapisz).pack(fill="x", pady=(12, 0))
-
     def _zbuduj_parametry(self) -> None:
         if not hasattr(self, "_parametry") or not self._parametry.winfo_exists():
             return
@@ -248,7 +258,7 @@ class OknoEgzemplarza(OknoDialogowe):
         # kategorii) i parametry znikały. Kategoria należy do modelu — proponujemy przeniesienie.
         model_id = self.model.wartosc
         if model_id and wartosc:
-            kat_modelu = self.db.execute("SELECT kategoria_id FROM model WHERE id = ?", (model_id,)).fetchone()[0]
+            kat_modelu = modele.pobierz(self.db, model_id)["kategoria_id"]
             if wartosc != kat_modelu:
                 self.kategoria.ustaw(kat_modelu)        # cofnięcie — model zostaje
                 if messagebox.askyesno(t("okno.potwierdzenie"), self._pytanie_o_przeniesienie(model_id, wartosc),
@@ -267,9 +277,9 @@ class OknoEgzemplarza(OknoDialogowe):
 
     def _pytanie_o_przeniesienie(self, model_id: int, kategoria_id: int) -> str:
         from i18n.tlumacz import nazwa
-        model = self.db.execute("SELECT nazwa FROM model WHERE id = ?", (model_id,)).fetchone()[0]
-        kategoria = self.db.execute("SELECT nazwy FROM kategoria WHERE id = ?", (kategoria_id,)).fetchone()[0]
-        liczba = self.db.execute("SELECT COUNT(*) FROM egzemplarz WHERE model_id = ?", (model_id,)).fetchone()[0]
+        model = modele.pobierz(self.db, model_id)["nazwa"]
+        kategoria = slowniki.kategoria(self.db, kategoria_id)["nazwy"]
+        liczba = modele.liczba_egzemplarzy(self.db, model_id)
         return t("pytanie.przenies_model", model=model, kategoria=nazwa(kategoria), liczba=liczba)
 
     def _model_przeniesiony(self, kategoria_id: int) -> None:

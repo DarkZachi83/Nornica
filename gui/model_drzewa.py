@@ -68,11 +68,15 @@ def _pasuje(e, fraza: str) -> bool:
 def zbuduj_wezly(lokalizacje: list, egzemplarze: list, tryb: str,
                  filtr: str = "", jezyk: str | None = None) -> list[Wezel]:
     """Zwraca węzły w kolejności wstawiania (rodzic zawsze przed dzieckiem)."""
-    fraza = (filtr or "").strip().casefold()
-    lok_po_id = {l["id"]: l for l in lokalizacje}
-    egz_po_id = {e["id"]: e for e in egzemplarze}
+    rodzic = _rodzice(lokalizacje, egzemplarze, tryb)
+    widoczne = _widoczne(rodzic, lokalizacje, egzemplarze, tryb, (filtr or "").strip().casefold())
+    return _kolejnosc(_wezly(rodzic, widoczne, lokalizacje, egzemplarze, tryb, jezyk))
 
-    # --- rodzic każdego węzła w wybranym trybie --------------------------------
+
+def _rodzice(lokalizacje: list, egzemplarze: list, tryb: str) -> dict[str, str]:
+    """Rodzic każdego węzła w wybranym trybie ("" = korzeń)."""
+    lok_po_id = {l["id"] for l in lokalizacje}
+    egz_po_id = {e["id"] for e in egzemplarze}
     rodzic: dict[str, str] = {}
     for e in egzemplarze:
         iid = iid_egzemplarza(e["id"])
@@ -89,23 +93,30 @@ def zbuduj_wezly(lokalizacje: list, egzemplarze: list, tryb: str,
                                                 if l["rodzic_id"] in lok_po_id else "")
         if any(r == WEZEL_BEZ_LOKALIZACJI for r in rodzic.values()):
             rodzic[WEZEL_BEZ_LOKALIZACJI] = ""
+    return rodzic
 
-    # --- filtr: trafienia + wszyscy ich przodkowie -----------------------------
-    widoczne = set(rodzic)
-    if fraza:
-        trafienia = {iid_egzemplarza(e["id"]) for e in egzemplarze if _pasuje(e, fraza)}
-        if tryb == "lokalizacje":
-            trafienia |= {iid_lokalizacji(l["id"]) for l in lokalizacje
-                          if fraza in l["nazwa"].casefold()}
-        widoczne = set()
-        for iid in trafienia:
-            krok = 0
-            while iid and iid not in widoczne and krok < 128:
-                widoczne.add(iid)
-                iid = rodzic.get(iid, "")
-                krok += 1
 
-    # --- węzły ----------------------------------------------------------------
+def _widoczne(rodzic: dict[str, str], lokalizacje: list, egzemplarze: list, tryb: str,
+              fraza: str) -> set[str]:
+    """Filtr: trafienia + wszyscy ich przodkowie. Bez frazy — wszystko."""
+    if not fraza:
+        return set(rodzic)
+    trafienia = {iid_egzemplarza(e["id"]) for e in egzemplarze if _pasuje(e, fraza)}
+    if tryb == "lokalizacje":
+        trafienia |= {iid_lokalizacji(l["id"]) for l in lokalizacje
+                      if fraza in l["nazwa"].casefold()}
+    widoczne: set[str] = set()
+    for iid in trafienia:
+        krok = 0
+        while iid and iid not in widoczne and krok < 128:
+            widoczne.add(iid)
+            iid = rodzic.get(iid, "")
+            krok += 1
+    return widoczne
+
+
+def _wezly(rodzic: dict[str, str], widoczne: set[str], lokalizacje: list, egzemplarze: list,
+           tryb: str, jezyk: str | None) -> dict[str, Wezel]:
     wezly: dict[str, Wezel] = {}
     for l in lokalizacje:
         iid = iid_lokalizacji(l["id"])
@@ -128,8 +139,11 @@ def zbuduj_wezly(lokalizacje: list, egzemplarze: list, tryb: str,
                                 nazwa(e["kategoria_nazwy"], jezyk)),
                                ("egzemplarz", f"status_{e['status_kod']}"),
                                (2, klucz_sortowania(tekst)))
+    return wezly
 
-    # --- kolejność: rodzic przed dziećmi, rodzeństwo posortowane --------------
+
+def _kolejnosc(wezly: dict[str, Wezel]) -> list[Wezel]:
+    """Rodzic przed dziećmi, rodzeństwo posortowane."""
     dzieci: dict[str, list[Wezel]] = {}
     for w in wezly.values():
         dzieci.setdefault(w.rodzic if w.rodzic in wezly else "", []).append(w)

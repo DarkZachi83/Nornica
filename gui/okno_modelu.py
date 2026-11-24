@@ -100,7 +100,7 @@ class OknoModelu(OknoDialogowe):
         """Dane z The Retro Web do FORMULARZA (zapis dopiero przyciskiem „Zapisz”).
         Puste pola są uzupełniane; wypełnione zostają, chyba że nadpisz=True.
         Źródło i licencja zawsze trafiają do opisu — to warunek CC BY-SA."""
-        kat = self.db.execute("SELECT id FROM kategoria WHERE kod = ?", (p.kategoria_kod,)).fetchone()
+        kat = slowniki.kategoria_po_kodzie(self.db, p.kategoria_kod)
         if kat and (nadpisz or not self.kategoria.wartosc):
             self.kategoria.ustaw(kat["id"])
             self._zbuduj_parametry()

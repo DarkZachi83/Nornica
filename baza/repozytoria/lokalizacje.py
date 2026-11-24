@@ -19,6 +19,11 @@ def sciezki(db: sqlite3.Connection) -> dict[int, str]:
     return {w[0]: w[1] for w in db.execute("SELECT lokalizacja_id, sciezka FROM v_lokalizacja_sciezka")}
 
 
+def liczba_egzemplarzy(db: sqlite3.Connection, lok_id: int) -> int:
+    """Egzemplarze leżące bezpośrednio w lokalizacji."""
+    return db.execute("SELECT COUNT(*) FROM egzemplarz WHERE lokalizacja_id = ?", (lok_id,)).fetchone()[0]
+
+
 def potomkowie(db: sqlite3.Connection, lok_id: int) -> set[int]:
     return {w[0] for w in db.execute(
         "WITH RECURSIVE d(id, g) AS (SELECT id, 0 FROM lokalizacja WHERE rodzic_id = ? "

@@ -16,22 +16,20 @@ from __future__ import annotations
 
 import tkinter as tk
 from dataclasses import dataclass, field
-from tkinter import messagebox, ttk
+from tkinter import ttk
 
 from baza.repozytoria import egzemplarze, lokalizacje, ustawienia
-from baza.zaleznosci import opis, zaleznosci
 from gui import styl
-from gui.bazowe import pokaz_blad
-from gui.model_drzewa import (TRYBY, iid_egzemplarza, iid_lokalizacji, rozbierz_iid,
-                              zbuduj_wezly)
+from gui.akcje_glowne import AkcjeGlowne
+from gui.menu_glowne import TRYB_KLUCZ, zbuduj_menu
+from gui.model_drzewa import TRYBY, rozbierz_iid, zbuduj_wezly
+from gui.skaner_glowny import SkanerGlowny
 from gui.szczegoly import PanelSzczegolow
-from i18n.tlumacz import JEZYKI, jezyk_biezacy, t, ustaw_jezyk
+from i18n.tlumacz import jezyk_biezacy, t, ustaw_jezyk
 from konfiguracja import KATALOG_PROGRAMU
-from uslugi import inwentarz
 
 KOLUMNY = (("kod", "kolumna.kod", 105), ("status", "kolumna.status", 100),
            ("kategoria", "kolumna.kategoria", 150))
-TRYB_KLUCZ = {"lokalizacje": "widok.lokalizacje", "montaz": "widok.montaz"}
 
 
 @dataclass
@@ -44,7 +42,7 @@ class StanWidoku:
     podzial: int | None = None
 
 
-class OknoGlowne(tk.Tk):
+class OknoGlowne(AkcjeGlowne, SkanerGlowny, tk.Tk):
     def __init__(self, polaczenie, pokaz_powitanie: bool = True):
         super().__init__(className="Nornica")
         self.db = polaczenie
@@ -125,8 +123,19 @@ class OknoGlowne(tk.Tk):
         # psuje każde wywołanie metody okna.
         self._widzety = {}
         self.title(t("aplikacja.nazwa"))
-        self._zbuduj_menu()
+        zbuduj_menu(self)
+        self._zbuduj_pasek()
+        podzial = ttk.Panedwindow(self, orient="horizontal")
+        podzial.pack(fill="both", expand=True, padx=10, pady=(4, 0))
+        self._widzety["podzial"] = podzial
+        podzial.add(self._zbuduj_drzewo(podzial), weight=3)
+        prawa = ttk.Frame(podzial, padding=(14, 0, 0, 0))
+        self._widzety["szczegoly"] = PanelSzczegolow(self, prawa)
+        podzial.add(prawa, weight=2)
+        self._zbuduj_stopke()
 
+    def _zbuduj_pasek(self) -> None:
+        """Przyciski, przełącznik widoku, pole skanera i wyszukiwarka."""
         pasek = ttk.Frame(self, padding=(10, 8, 10, 4))
         pasek.pack(fill="x")
         ttk.Button(pasek, text=t("akcja.nowy_egzemplarz"),
@@ -137,7 +146,7 @@ class OknoGlowne(tk.Tk):
                    command=self.katalog_modeli).pack(side="left", padx=(6, 18))
         for tryb in TRYBY:
             ttk.Radiobutton(pasek, text=t(TRYB_KLUCZ[tryb]), value=tryb, variable=self.tryb_var,
-                            command=self._tryb_zmieniony).pack(side="left", padx=(0, 8))
+                            command=self.tryb_zmieniony).pack(side="left", padx=(0, 8))
         szukaj = ttk.Entry(pasek, textvariable=self.filtr_var, width=26)
         szukaj.pack(side="right")
         ttk.Label(pasek, text=t("pasek.szukaj")).pack(side="right", padx=(0, 6))
@@ -151,10 +160,8 @@ class OknoGlowne(tk.Tk):
         self._widzety["szukaj"] = szukaj
         self.bind("<Control-f>", lambda _e: self._widzety["szukaj"].focus_set())
 
-        podzial = ttk.Panedwindow(self, orient="horizontal")
-        podzial.pack(fill="both", expand=True, padx=10, pady=(4, 0))
-        self._widzety["podzial"] = podzial
-
+    def _zbuduj_drzewo(self, podzial: ttk.Panedwindow) -> ttk.Frame:
+        """Drzewo lokalizacji i egzemplarzy z przewijakiem; kolory według statusu."""
         lewa = ttk.Frame(podzial)
         drzewo = ttk.Treeview(lewa, columns=[k for k, _, _ in KOLUMNY], selectmode="browse")
         drzewo.heading("#0", text=t("kolumna.nazwa"), anchor="w")
@@ -178,12 +185,9 @@ class OknoGlowne(tk.Tk):
         drzewo.bind("<Button-3>", self._menu_kontekstowe)          # Linux, Windows
         drzewo.bind("<Button-2>", self._menu_kontekstowe)          # macOS
         self._widzety["drzewo"] = drzewo
-        podzial.add(lewa, weight=3)
+        return lewa
 
-        prawa = ttk.Frame(podzial, padding=(14, 0, 0, 0))
-        self._widzety["szczegoly"] = PanelSzczegolow(self, prawa)
-        podzial.add(prawa, weight=2)
-
+    def _zbuduj_stopke(self) -> None:
         stopka = ttk.Frame(self, padding=(10, 4))
         stopka.pack(fill="x")
         self._widzety["licznik"] = ttk.Label(stopka, style="Opis.TLabel")
@@ -191,45 +195,6 @@ class OknoGlowne(tk.Tk):
         self._widzety["skan_info"] = ttk.Label(stopka, style="Opis.TLabel")
         self._widzety["skan_info"].pack(side="right")
         self._pokaz_stan_skanera()
-
-    def _zbuduj_menu(self) -> None:
-        menu = tk.Menu(self)
-        plik = tk.Menu(menu, tearoff=False)
-        plik.add_command(label=t("akcja.nowy_egzemplarz"), accelerator="Ctrl+N",
-                         command=self.nowy_egzemplarz)
-        plik.add_command(label=t("akcja.nowa_lokalizacja"), command=self.nowa_lokalizacja)
-        plik.add_command(label=t("akcja.katalog_modeli"), accelerator="Ctrl+M",
-                         command=self.katalog_modeli)
-        plik.add_command(label=t("akcja.etykiety"), accelerator="Ctrl+P", command=self.drukuj_etykiety)
-        plik.add_command(label=t("akcja.eksport"), accelerator="Ctrl+E", command=self.eksportuj)
-        plik.add_command(label=t("akcja.slowniki"), command=self.slowniki)
-        plik.add_command(label=t("akcja.inwentaryzacje"), command=self.inwentaryzacje)
-        plik.add_command(label=t("akcja.porzadki"), command=self.porzadki)
-        plik.add_command(label=t("akcja.kopia"), accelerator="Ctrl+B", command=self.kopia_zapasowa)
-        plik.add_separator()
-        plik.add_command(label=t("akcja.telefon"), accelerator="Ctrl+T", command=self.telefon)
-        plik.add_separator()
-        plik.add_command(label=t("akcja.zakoncz"), accelerator="Ctrl+Q", command=self.destroy)
-        menu.add_cascade(label=t("menu.plik"), menu=plik)
-
-        widok = tk.Menu(menu, tearoff=False)
-        for tryb in TRYBY:
-            widok.add_radiobutton(label=t(TRYB_KLUCZ[tryb]), value=tryb, variable=self.tryb_var,
-                                  command=self._tryb_zmieniony)
-        widok.add_separator()
-        widok.add_command(label=t("akcja.odswiez"), accelerator="F5", command=self.odswiez)
-        menu.add_cascade(label=t("menu.widok"), menu=widok)
-
-        jezyk = tk.Menu(menu, tearoff=False)
-        for kod in JEZYKI:
-            jezyk.add_radiobutton(label=t(f"jezyk.{kod}"), value=kod, variable=self.jezyk_var,
-                                  command=self.przelacz_jezyk)
-        menu.add_cascade(label=t("menu.jezyk"), menu=jezyk)
-
-        pomoc = tk.Menu(menu, tearoff=False)
-        pomoc.add_command(label=t("akcja.o_programie"), command=self.o_programie)
-        menu.add_cascade(label=t("menu.pomoc"), menu=pomoc)
-        self.configure(menu=menu)
 
     # ----------------------------------------------------- język i przebudowa
     def przelacz_jezyk(self, jezyk: str | None = None) -> None:
@@ -378,7 +343,7 @@ class OknoGlowne(tk.Tk):
         finally:
             menu.grab_release()
 
-    def _tryb_zmieniony(self) -> None:
+    def tryb_zmieniony(self) -> None:
         self.stan.tryb = self.tryb_var.get()
         self.odswiez()
 
@@ -392,175 +357,6 @@ class OknoGlowne(tk.Tk):
         self._zadanie_filtra = None
         if self._widzety.get("drzewo") is not None and self._widzety["drzewo"].winfo_exists():
             self.odswiez()
-
-    # ------------------------------------------------------------------ akcje
-    def nowy_egzemplarz(self, lokalizacja_id: int | None = None, rodzic_id: int | None = None):
-        from gui.okno_egzemplarza import OknoEgzemplarza
-        if lokalizacja_id is None and rodzic_id is None:
-            rodzaj, ident = rozbierz_iid(self.stan.zaznaczone)
-            if rodzaj == "L":
-                lokalizacja_id = ident
-        okno = OknoEgzemplarza(self, None, lokalizacja_id=lokalizacja_id, rodzic_id=rodzic_id)
-        okno.pokaz()
-        return okno
-
-    def edytuj_egzemplarz(self, egz_id: int, zakladka: int = 0):
-        from gui.okno_egzemplarza import OknoEgzemplarza
-        okno = OknoEgzemplarza(self, egz_id, zakladka=zakladka)
-        okno.pokaz()
-        return okno
-
-    def nowa_lokalizacja(self, rodzic_id: int | None = None):
-        from gui.okno_lokalizacji import OknoLokalizacji
-        okno = OknoLokalizacji(self, None, rodzic_id=rodzic_id)
-        okno.pokaz()
-        return okno
-
-    def edytuj_lokalizacje(self, lok_id: int):
-        from gui.okno_lokalizacji import OknoLokalizacji
-        okno = OknoLokalizacji(self, lok_id)
-        okno.pokaz()
-        return okno
-
-    def edytuj_model(self, model_id: int):
-        from gui.okno_modelu import OknoModelu
-        okno = OknoModelu(self, model_id, po_zapisie=lambda _id: self.odswiez())
-        okno.pokaz()
-        return okno
-
-    def katalog_modeli(self):
-        """Jedno okno katalogu: ponowne wywołanie wyciąga istniejące na wierzch."""
-        from gui.okno_katalogu import OknoKataloguModeli
-        for okno in self._dialogi:
-            if isinstance(okno, OknoKataloguModeli) and okno.winfo_exists():
-                okno.lift()
-                return okno
-        okno = OknoKataloguModeli(self)
-        okno.pokaz()
-        return okno
-
-    def drukuj_etykiety(self):
-        """Okno etykiet dla bieżącego zaznaczenia (egzemplarz, lokalizacja albo całość)."""
-        from gui.okno_etykiet import OknoEtykiet
-        okno = OknoEtykiet(self, self.stan.zaznaczone)
-        okno.pokaz()
-        return okno
-
-    def eksportuj(self):
-        from gui.okno_eksportu import OknoEksportu
-        okno = OknoEksportu(self, self.stan.zaznaczone)
-        okno.pokaz()
-        return okno
-
-    # ------------------------------------------------------------------ skaner
-    def _fokus_skanera(self) -> None:
-        pole = self._widzety.get("skan")
-        if pole is not None and pole.winfo_exists():
-            pole.focus_set()
-            pole.select_range(0, "end")
-
-    def _skan_z_pola(self) -> None:
-        kod = self.skan_var.get()
-        self.skan_var.set("")
-        if kod.strip():
-            self.obsluz_skan(kod, "klawiatura")
-
-    def obsluz_skan(self, kod: str, zrodlo: str):
-        """Wspólna obsługa skanu z każdego źródła: pole „Skanuj” albo telefon.
-        Egzemplarz i lokalizacja są pokazywane w drzewie; nieznany kod — komunikat
-        w stopce (bez okna modalnego: skanuje się seriami)."""
-        from uslugi import skaner
-        wynik = skaner.rozpoznaj(self.db, kod)
-        if wynik.typ == "nieznany":
-            self.bell()
-            self._ostatni_skan = ("skaner.nieznany", {"kod": wynik.kod or "—"})
-        else:
-            iid = (iid_egzemplarza if wynik.typ == "egzemplarz" else iid_lokalizacji)(wynik.ident)
-            if self.filtr_var.get():
-                self.filtr_var.set("")      # filtr mógłby ukryć zeskanowany element
-            self.odswiez(zaznacz=iid)
-            if wynik.typ == "lokalizacja":
-                # rozwinięcie PO odświeżeniu — odświeżenie zapisuje bieżący stan drzewa
-                # i nadpisałoby wcześniejszy wpis; pudełko ma pokazać zawartość
-                self._widzety["drzewo"].item(iid, open=True)
-                self.stan.rozwiniete.add(iid)
-            self._ostatni_skan = ("skaner.ostatni_telefon" if zrodlo == "telefon" else "skaner.ostatni",
-                                  {"kod": wynik.kod})
-        self._pokaz_stan_skanera()
-        return wynik
-
-    def _pokaz_stan_skanera(self) -> None:
-        etykieta = self._widzety.get("skan_info")
-        if etykieta is None or not etykieta.winfo_exists():
-            return
-        czesci = []
-        if self._ostatni_skan:
-            klucz, pola = self._ostatni_skan
-            czesci.append(t(klucz, **pola))
-        if self.serwer is not None and self.serwer.dziala:
-            czesci.append(t("skaner.serwer_dziala"))
-        etykieta.configure(text="   ".join(czesci))
-
-    def _obsluga_mostu(self, rodzaj: str, dane):
-        """Zapytania serwera telefonu — wykonywane tutaj, w wątku interfejsu."""
-        from uslugi import skaner
-        if rodzaj == "skan":
-            wynik = self.obsluz_skan(dane, "telefon")
-            return skaner.karta_mobilna(self.db, wynik)
-        if rodzaj == "zdjecie":
-            return self._zdjecie_z_telefonu(dane)
-        if rodzaj == "inwentaryzacja":
-            from uslugi import inwentaryzacja
-            try:
-                return inwentaryzacja.obsluga_telefonu(self.db, dane)
-            finally:
-                self.powiadom_okna()       # otwarte okno inwentaryzacji pokazuje skany na żywo
-        raise ValueError(rodzaj)
-
-    def _zdjecie_z_telefonu(self, dane: dict) -> dict:
-        """Zapis zdjęcia przysłanego z telefonu. Miniatura i suma są już policzone
-        w wątku serwera — tu tylko kopia do magazynu i rekord w bazie."""
-        from datetime import datetime
-        from pathlib import Path
-        from uslugi import pliki, skaner
-        wynik = skaner.rozpoznaj(self.db, dane["kod"])
-        if wynik.typ != "egzemplarz":
-            from wyjatki import BladNornicy
-            raise BladNornicy("mobilny.zdjecie_tylko_egzemplarz")
-        # iPhone nazywa każde zdjęcie „image.jpg” — wtedy tytuł z datą
-        nazwa = Path(dane.get("nazwa") or "").stem
-        if nazwa.lower() in ("", "image", "blob", "photo"):
-            nazwa = t("mobilny.tytul_zdjecia", data=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        zasob = pliki.dodaj_plik(self.db, dane["sciezka"], {"egzemplarz_id": wynik.ident}, typ="zdjecie",
-                                 tytul=nazwa, wstepnie=dane.get("wstepnie"))
-        if dane.get("glowne"):          # decyduje pole na telefonie (domyślnie zaznaczone, gdy brak głównego)
-            pliki.ustaw_zdjecie_glowne(self.db, wynik.ident, zasob)
-        self.odswiez(zaznacz=iid_egzemplarza(wynik.ident))
-        self._ostatni_skan = ("skaner.zdjecie_z_telefonu", {"kod": wynik.kod})
-        self._pokaz_stan_skanera()
-        karta = skaner.karta_mobilna(self.db, wynik)
-        karta["komunikat"] = t("mobilny.zdjecie_dodane")
-        return karta
-
-    def _pompuj_most(self) -> None:
-        try:
-            self.most.obsluz_oczekujace(self._obsluga_mostu)
-        finally:
-            try:
-                self.after(100, self._pompuj_most)
-            except tk.TclError:
-                pass                       # okno już zamknięte
-
-    def telefon(self):
-        """Jedno okno telefonu: ponowne wywołanie wyciąga istniejące na wierzch."""
-        from gui.okno_telefonu import OknoTelefonu
-        for okno in self._dialogi:
-            if isinstance(okno, OknoTelefonu) and okno.winfo_exists():
-                okno.lift()
-                return okno
-        okno = OknoTelefonu(self)
-        okno.pokaz()
-        return okno
 
     def report_callback_exception(self, typ, wartosc, slad) -> None:
         """Błąd w obsłudze zdarzenia (kliknięcie, zmiana rozmiaru…): do dziennika,
@@ -586,121 +382,3 @@ class OknoGlowne(tk.Tk):
         if self.serwer is not None:
             self.serwer.zatrzymaj()        # serwer nie może przeżyć programu
         super().destroy()
-
-    def przenies_kategorie(self, egz_id: int):
-        """Egzemplarz z modelem: przenosi się model (kategoria należy do niego)."""
-        from gui.okno_przeniesienia import OknoPrzeniesienia
-        model_id = self.db.execute("SELECT model_id FROM egzemplarz WHERE id = ?", (egz_id,)).fetchone()[0]
-        okno = (OknoPrzeniesienia(self, model_id=model_id) if model_id is not None
-                else OknoPrzeniesienia(self, egz_id=egz_id))
-        okno.pokaz()
-        return okno
-
-    def slowniki(self):
-        """Jedno okno słowników: ponowne wywołanie wyciąga istniejące na wierzch."""
-        from gui.okno_slownikow import OknoSlownikow
-        for okno in self._dialogi:
-            if isinstance(okno, OknoSlownikow) and okno.winfo_exists():
-                okno.lift()
-                return okno
-        okno = OknoSlownikow(self)
-        okno.pokaz()
-        return okno
-
-    def porzadki(self):
-        """Jedno okno porządków: ponowne wywołanie wyciąga istniejące na wierzch."""
-        from gui.okno_porzadkow import OknoPorzadkow
-        for okno in self._dialogi:
-            if isinstance(okno, OknoPorzadkow) and okno.winfo_exists():
-                okno.lift()
-                return okno
-        okno = OknoPorzadkow(self)
-        okno.pokaz()
-        return okno
-
-    def inwentaryzacje(self):
-        """Jedno okno inwentaryzacji: ponowne wywołanie wyciąga istniejące na wierzch."""
-        from gui.okno_inwentaryzacji import OknoInwentaryzacji
-        for okno in self._dialogi:
-            if isinstance(okno, OknoInwentaryzacji) and okno.winfo_exists():
-                okno.lift()
-                return okno
-        okno = OknoInwentaryzacji(self)
-        okno.pokaz()
-        return okno
-
-    def kopia_zapasowa(self):
-        """Jedno okno kopii: ponowne wywołanie wyciąga istniejące na wierzch."""
-        from gui.okno_kopii import OknoKopii
-        for okno in self._dialogi:
-            if isinstance(okno, OknoKopii) and okno.winfo_exists():
-                okno.lift()
-                return okno
-        okno = OknoKopii(self)
-        okno.pokaz()
-        return okno
-
-    def o_programie(self) -> None:
-        from gui.okna_info import OknoOProgramie
-        OknoOProgramie(self).pokaz()
-
-    def usun_zaznaczone(self) -> None:
-        rodzaj, ident = rozbierz_iid(self.stan.zaznaczone)
-        if rodzaj == "E":
-            self.usun_egzemplarz(ident)
-        elif rodzaj == "L":
-            self.usun_lokalizacje(ident)
-
-    def usun_egzemplarz(self, egz_id: int) -> None:
-        blokujace, kaskadowe = zaleznosci(self.db, "egzemplarz", egz_id)
-        czesci = blokujace.pop(("egzemplarz", "rodzic_id"), 0)
-        if blokujace:
-            messagebox.showwarning(t("okno.uwaga"), t("blad.usuwanie_zablokowane",
-                                                      lista=opis(blokujace)), parent=self)
-            return
-        wiersz = egzemplarze.pobierz(self.db, egz_id)
-        pytanie = t("pytanie.usun_egzemplarz", nazwa=egzemplarze.nazwa_wyswietlana(wiersz))
-        if czesci:
-            pytanie += "\n\n" + t("pytanie.usun_z_czesciami", liczba=czesci)
-        if kaskadowe:
-            pytanie += "\n\n" + t("pytanie.usun_tez", lista=opis(kaskadowe))
-        if not messagebox.askyesno(t("okno.potwierdzenie"), pytanie, parent=self):
-            return
-        try:
-            inwentarz.usun_egzemplarz(self.db, egz_id)
-        except Exception as blad:   # noqa: BLE001 — każdy błąd trafia do użytkownika
-            pokaz_blad(self, blad)
-            return
-        self.stan.zaznaczone = None
-        self.odswiez()
-
-    def usun_lokalizacje(self, lok_id: int) -> None:
-        wiersz = lokalizacje.pobierz(self.db, lok_id)
-        blokujace, _ = zaleznosci(self.db, "lokalizacja", lok_id)
-        przenies = False
-        if blokujace:
-            cel = (lokalizacje.pobierz(self.db, wiersz["rodzic_id"])["nazwa"]
-                   if wiersz["rodzic_id"] else t("lokalizacja.brak"))
-            pytanie = t("pytanie.usun_lokalizacje_z_zawartoscia", nazwa=wiersz["nazwa"],
-                        lista=opis(blokujace), cel=cel)
-            przenies = True
-        else:
-            pytanie = t("pytanie.usun_lokalizacje", nazwa=wiersz["nazwa"])
-        if not messagebox.askyesno(t("okno.potwierdzenie"), pytanie, parent=self):
-            return
-        try:
-            inwentarz.usun_lokalizacje(self.db, lok_id, przenies_zawartosc=przenies)
-        except Exception as blad:   # noqa: BLE001
-            pokaz_blad(self, blad)
-            return
-        self.stan.zaznaczone = iid_lokalizacji(wiersz["rodzic_id"]) if wiersz["rodzic_id"] else None
-        self.odswiez()
-
-    def wydziel_z_partii(self, egz_id: int) -> None:
-        try:
-            nowy = inwentarz.wydziel_z_partii(self.db, egz_id)
-        except Exception as blad:   # noqa: BLE001
-            pokaz_blad(self, blad)
-            return
-        self.odswiez(zaznacz=iid_egzemplarza(nowy))
-        self.edytuj_egzemplarz(nowy)

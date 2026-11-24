@@ -21,6 +21,10 @@ def w_kategorii(db: sqlite3.Connection, kat_id: int | None) -> list[sqlite3.Row]
                       (kat_id,)).fetchall()
 
 
+def liczba_egzemplarzy(db: sqlite3.Connection, model_id: int) -> int:
+    return db.execute("SELECT COUNT(*) FROM egzemplarz WHERE model_id = ?", (model_id,)).fetchone()[0]
+
+
 def etykieta(wiersz) -> str:
     """'Creative Sound Blaster 16 (CT2230)'"""
     tekst = " ".join(c for c in (wiersz["producent"], wiersz["nazwa"]) if c)

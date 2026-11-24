@@ -133,7 +133,7 @@ w `kopie/` w folderze danych).
     pip install -r requirements-dev.txt
     xvfb-run -a -s "-screen 0 1920x1080x24" python -m unittest discover -s testy -t .
 
-Około 360 testów: baza, migracje, reguły biznesowe, zgodność kluczy
+Około 470 testów: baza, migracje, reguły biznesowe, zgodność kluczy
 tłumaczeń (EN/PL), etykiety PDF (odczytywane z powrotem przez zbar), serwer
 dla telefonu, parser The Retro Web (na zapisanych stronach) i interfejs.
 Bez ekranu testy interfejsu są pomijane. GitHub Actions uruchamia je przy
@@ -161,6 +161,11 @@ czyta gotowe pliki PNG, więc do startu Pillow nie jest potrzebne.
     testy/               testy i dane testowe
     narzedzia/           skrypty deweloperskie
     docs/zrzuty/         zrzuty ekranu do README
+
+Zasady warstw (pilnuje ich `testy/test_architektura.py`): okna w `gui/` czytają
+dane przez `baza/repozytoria`, a zmieniają przez `uslugi/` — nigdy własnym
+SQL-em; `baza/` i `uslugi/` nie zależą od interfejsu. Moduł ma do 600 linii,
+funkcja do 90 — dłuższe dzielimy.
 
 ## Wesprzyj projekt
 

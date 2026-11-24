@@ -66,6 +66,12 @@ def cel_powiazania(wiersz) -> dict:
     return {}
 
 
+def zdarzenie(db: sqlite3.Connection, zdarzenie_id: int | None) -> sqlite3.Row | None:
+    if not zdarzenie_id:
+        return None
+    return db.execute("SELECT * FROM zdarzenie WHERE id = ?", (zdarzenie_id,)).fetchone()
+
+
 def zdarzenia(db: sqlite3.Connection, egz_id: int) -> list[sqlite3.Row]:
     return db.execute("SELECT * FROM zdarzenie WHERE egzemplarz_id = ? ORDER BY data DESC, id DESC",
                       (egz_id,)).fetchall()

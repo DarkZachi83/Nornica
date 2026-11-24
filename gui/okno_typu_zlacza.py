@@ -15,6 +15,7 @@ from baza.enumy import opcje
 from gui.bazowe import OknoDialogowe, pokaz_blad
 from gui.pola import PoleWyboru
 from i18n.tlumacz import jezyk_biezacy, t
+from baza.repozytoria import zlacza as repo_zlaczy
 from uslugi import inwentarz
 
 
@@ -25,7 +26,7 @@ class OknoTypuZlacza(OknoDialogowe):
         self.typ_id = typ_id
         nazwy = {}
         if typ_id is not None:                     # edycja: wartości z bazy
-            wiersz = self.db.execute("SELECT rodzaj, nazwy FROM zlacze_typ WHERE id = ?", (typ_id,)).fetchone()
+            wiersz = repo_zlaczy.typ(self.db, typ_id)
             rodzaj, nazwy = wiersz["rodzaj"], json.loads(wiersz["nazwy"])
         self.rodzaj = PoleWyboru(lambda: opcje("zlacze_typ.rodzaj"), rodzaj or "port")
         self.nazwy = {j: tk.StringVar(value=nazwy.get(j, "")) for j in ("pl", "en")}

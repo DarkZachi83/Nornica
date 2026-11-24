@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from tkinter import messagebox, ttk
 
 from baza import enumy
+from baza.repozytoria import egzemplarze
 from baza.repozytoria.egzemplarze import nazwa_wyswietlana
 from gui.bazowe import OknoDialogowe, pokaz_blad
 from gui.model_drzewa import iid_egzemplarza, iid_lokalizacji
@@ -86,9 +87,8 @@ class OknoPorzadkow(OknoDialogowe):
         kody = {}
         for p in self.wyniki.get("brakujace_pliki", []):
             if p["egzemplarz_id"] is not None and p["egzemplarz_id"] not in kody:
-                wiersz = self.db.execute("SELECT kod_inwentarzowy FROM egzemplarz WHERE id = ?",
-                                         (p["egzemplarz_id"],)).fetchone()
-                kody[p["egzemplarz_id"]] = wiersz[0] if wiersz else None
+                wiersz = egzemplarze.pobierz(self.db, p["egzemplarz_id"])
+                kody[p["egzemplarz_id"]] = wiersz["kod_inwentarzowy"] if wiersz else None
             p["kod_egzemplarza"] = kody.get(p["egzemplarz_id"])
 
     def dane_zmienione(self) -> None:

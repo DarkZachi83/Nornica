@@ -6,7 +6,7 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 
-from baza.repozytoria import egzemplarze, slowniki
+from baza.repozytoria import egzemplarze, modele, slowniki
 from gui import styl
 from gui.bazowe import OknoDialogowe, pokaz_blad
 from gui.pola import PoleWyboru
@@ -29,11 +29,8 @@ class OknoPrzeniesienia(OknoDialogowe):
 
     def _opis_obiektu(self) -> str:
         if self.model_id is not None:
-            m = self.db.execute("SELECT m.nazwa, p.nazwa AS producent FROM model m "
-                                "LEFT JOIN producent p ON p.id = m.producent_id WHERE m.id = ?",
-                                (self.model_id,)).fetchone()
-            liczba = self.db.execute("SELECT COUNT(*) FROM egzemplarz WHERE model_id = ?",
-                                     (self.model_id,)).fetchone()[0]
+            m = modele.pobierz(self.db, self.model_id)
+            liczba = modele.liczba_egzemplarzy(self.db, self.model_id)
             return t("przenies.model", nazwa=" ".join(c for c in (m["producent"], m["nazwa"]) if c), liczba=liczba)
         return t("przenies.egzemplarz", nazwa=egzemplarze.nazwa_wyswietlana(egzemplarze.pobierz(self.db, self.egz_id)))
 
@@ -43,7 +40,7 @@ class OknoPrzeniesienia(OknoDialogowe):
         ramka.pack(fill="both", expand=True)
         ttk.Label(ramka, text=self._opis_obiektu(), wraplength=480, justify="left").pack(anchor="w")
         obecna, _ = przeniesienie._wpisy(self.db, self.model_id, self.egz_id)
-        kategoria = self.db.execute("SELECT nazwy FROM kategoria WHERE id = ?", (obecna,)).fetchone()
+        kategoria = slowniki.kategoria(self.db, obecna)
         ttk.Label(ramka, text=t("przenies.obecna", kategoria=nazwa(kategoria["nazwy"])),
                   style="Opis.TLabel").pack(anchor="w", pady=(6, 0))
         wybor = ttk.Frame(ramka)

@@ -126,7 +126,7 @@ files, backups and keys in case someone points the data folder here.
     pip install -r requirements-dev.txt
     xvfb-run -a -s "-screen 0 1920x1080x24" python -m unittest discover -s testy -t .
 
-About 360 tests: database, migrations, business rules, i18n key parity
+About 470 tests: database, migrations, business rules, i18n key parity
 (EN/PL), PDF labels (decoded back with zbar), the phone server, The Retro Web
 parser (on saved pages) and the GUI. Without a display the GUI tests are
 skipped. CI runs them on every push (GitHub Actions).
@@ -143,6 +143,11 @@ skipped. CI runs them on every push (GitHub Actions).
     zasoby/              icons, splash screen, phone page (jsQR)
     testy/               tests and test data
     narzedzia/           developer scripts
+
+Layer rules (checked by `testy/test_architektura.py`): windows in `gui/` read
+data through `baza/repozytoria` and change it through `uslugi/`, never with
+their own SQL; `baza/` and `uslugi/` do not depend on the GUI. Modules stay
+under 600 lines and functions under 90 — anything longer gets split.
 
 Identifiers are in Polish (the author's language); all user-facing text goes
 through translation keys.

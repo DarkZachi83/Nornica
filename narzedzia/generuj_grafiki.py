@@ -26,7 +26,7 @@ CEL = KORZEN / "zasoby"
 
 KADR_GLOWY = (0.5149, 0.0977, 0.6641, 0.3711)          # głowa nornicy (kwadrat)
 KADR_BRAKU_ZDJECIA = (0.4474, 0.0716, 0.7322, 0.4622)  # nornica przy regale, 4:3
-ROZMIAR_ZDJECIA_GLOWNEGO = (280, 210)                  # musi się zgadzać z gui/szczegoly.py
+ROZMIAR_ZDJECIA_GLOWNEGO = (280, 210)                  # musi się zgadzać z gui/karta_zdjecie.py
 SZEROKOSC_POWITALNEGO = 1020
 
 
